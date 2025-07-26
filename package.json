@@ -1,0 +1,38 @@
+{
+  "name": "flashloan-arbitrage",
+  "version": "1.0.0",
+  "description": "Cross-chain flashloan arbitrage system with opportunity detection",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "build:contracts": "npx hardhat compile",
+    "test": "npx hardhat test",
+    "deploy": "npx hardhat run scripts/deploy.ts",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "example": "ts-node src/example.ts",
+    "lint": "eslint src/**/*.ts",
+    "format": "prettier --write src/**/*.ts"
+  },
+  "keywords": ["flashloan", "arbitrage", "defi", "cross-chain", "ethereum"],
+  "author": "Flashloan Arbitrage Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "hardhat": "^2.19.0",
+    "prettier": "^3.0.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.0",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.0",
+    "ethers": "^6.8.0",
+    "ws": "^8.14.0"
+  }
+}
