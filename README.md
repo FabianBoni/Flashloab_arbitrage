@@ -1,254 +1,324 @@
-# Flashloan Arbitrage System
+# 🚀 Flashloan Arbitrage Bot
 
-A comprehensive cross-chain flashloan arbitrage system that automatically detects and executes profitable arbitrage opportunities across multiple DEXes and blockchain networks.
+A comprehensive flashloan arbitrage system that automatically detects and executes profitable arbitrage opportunities across multiple DEXes and blockchain networks, with full **MetaMask integration**.
 
-## 🚀 Features
+## ✨ Key Features
 
-- **Multi-Chain Support**: Ethereum, Polygon, Arbitrum, and BSC
-- **Cross-Chain Arbitrage**: Execute arbitrage across different blockchain networks
-- **Real-time Monitoring**: Continuous price monitoring across multiple DEXes
-- **Automated Execution**: Smart contract-based flashloan arbitrage execution
-- **Risk Management**: Built-in slippage protection and profit thresholds
-- **Gas Optimization**: Efficient gas usage with dynamic fee estimation
+### 🦊 MetaMask Integration
+- **Browser-based interface** with MetaMask wallet connection
+- **Multi-chain support** - Ethereum, Polygon, Arbitrum, BSC
+- **Real-time wallet monitoring** - Balance, network, and connection status
+- **Transaction signing** through MetaMask for secure execution
+- **Network switching** and chain validation
 
-## 🏗️ Architecture
+### 🤖 Automated Trading
+- **Multi-DEX price monitoring** across Uniswap, SushiSwap, QuickSwap
+- **Cross-chain arbitrage detection** with bridge integration
+- **Flashloan-based execution** via Aave V3 for capital efficiency
+- **Risk management** with configurable profit thresholds and slippage protection
 
-### Smart Contracts
-- `FlashloanArbitrage.sol`: Main contract for executing flashloan arbitrage trades
-- Integrated with Aave V3 for flashloans
-- Support for multiple DEXes (Uniswap, SushiSwap, etc.)
+### 📊 Real-time Dashboard
+- **Live statistics** - opportunities found, trades executed, success rate, total profit
+- **Activity monitoring** with detailed logging
+- **Bot controls** - start/stop with wallet verification
+- **Network status** indicators and chain information
 
-### Bot Components
-- **PriceMonitor**: Real-time price monitoring and opportunity detection
-- **ArbitrageExecutor**: Smart contract interaction and trade execution
-- **CrossChainArbitrage**: Cross-chain opportunity detection and execution
-- **FlashloanArbitrageBot**: Main orchestrator and bot controller
+## 🎯 Usage Modes
 
-## 📋 Prerequisites
+### 1. Web Interface (MetaMask Required)
+Perfect for interactive monitoring and manual oversight:
 
-- Node.js 18+
-- npm or yarn
-- Ethereum wallet with private key
-- RPC endpoints for supported networks
-- API keys for block explorers (optional, for verification)
-
-## 🛠️ Installation
-
-1. Clone the repository:
 ```bash
+# Start the web interface
+npm run build
+npm run start:web
+
+# Open http://localhost:3000 in your browser
+# Connect MetaMask and start trading
+```
+
+### 2. CLI Mode (Private Key)
+Ideal for automated headless trading:
+
+```bash
+# Configure environment
+cp .env.example .env
+# Edit .env with your settings
+
+# Start the CLI bot
+npm run build
+npm start
+```
+
+## 🚀 Quick Start
+
+### Prerequisites
+- **Node.js** 18+ and npm
+- **MetaMask** browser extension (for web interface)
+- **RPC endpoints** for supported chains
+- **Private key** (for CLI mode) or MetaMask (for web interface)
+
+### Installation
+
+```bash
+# Clone the repository
 git clone https://github.com/FabianBoni/Flashloab_arbitrage.git
 cd Flashloab_arbitrage
-```
 
-2. Install dependencies:
-```bash
+# Install dependencies
 npm install
-```
 
-3. Set up environment variables:
-```bash
+# Setup environment
 cp .env.example .env
 # Edit .env with your configuration
-```
 
-4. Compile smart contracts:
-```bash
+# Build the project
 npm run build
 ```
 
-## ⚙️ Configuration
+### Web Interface Setup
+
+1. **Start the web server:**
+   ```bash
+   npm run start:web
+   ```
+
+2. **Open your browser to:** `http://localhost:3000`
+
+3. **Connect MetaMask:**
+   - Ensure MetaMask is installed and unlocked
+   - Click "Connect MetaMask" 
+   - Approve the connection request
+   - Switch to a supported network if needed
+
+4. **Start trading:**
+   - Click "Start Bot" once connected
+   - Monitor real-time statistics and activity
+   - Stop/start as needed
+
+### CLI Setup
+
+1. **Configure your environment:**
+   ```bash
+   # Edit .env file
+   PRIVATE_KEY=your_private_key_here
+   ETHEREUM_RPC_URL=https://eth-mainnet.alchemyapi.io/v2/your-api-key
+   POLYGON_RPC_URL=https://polygon-mainnet.alchemyapi.io/v2/your-api-key
+   # ... other settings
+   ```
+
+2. **Deploy contracts (if needed):**
+   ```bash
+   npm run deploy
+   ```
+
+3. **Start the bot:**
+   ```bash
+   npm start
+   ```
+
+## 🌐 Supported Networks
+
+| Network | Chain ID | DEXes | Flashloan Provider |
+|---------|----------|-------|-------------------|
+| **Ethereum** | 1 | Uniswap V2, SushiSwap | Aave V3 |
+| **Polygon** | 137 | QuickSwap, SushiSwap | Aave V3 |
+| **Arbitrum** | 42161 | Uniswap V2, SushiSwap | Aave V3 |
+| **BSC** | 56 | PancakeSwap, SushiSwap | Aave V3 |
+
+## 🔧 Configuration
 
 ### Environment Variables
 
-Create a `.env` file with the following variables:
-
-```env
+```bash
 # Network RPC URLs
 ETHEREUM_RPC_URL=https://eth-mainnet.alchemyapi.io/v2/your-api-key
 POLYGON_RPC_URL=https://polygon-mainnet.alchemyapi.io/v2/your-api-key
 ARBITRUM_RPC_URL=https://arb-mainnet.alchemyapi.io/v2/your-api-key
 BSC_RPC_URL=https://bsc-dataseed.binance.org/
 
-# Private key for deployment and transactions (without 0x prefix)
-PRIVATE_KEY=your_private_key_here
+# Wallet Configuration
+PRIVATE_KEY=your_private_key_here  # For CLI mode only
 
-# Trading Configuration
-MIN_PROFIT_THRESHOLD=0.01    # Minimum profit percentage (1%)
-MAX_GAS_PRICE=50            # Maximum gas price in Gwei
-SLIPPAGE_TOLERANCE=0.005    # Maximum slippage (0.5%)
+# Trading Parameters
+MIN_PROFIT_THRESHOLD=0.01          # Minimum 1% profit
+MAX_GAS_PRICE=50                   # Max 50 gwei gas price
+SLIPPAGE_TOLERANCE=0.005           # 0.5% slippage tolerance
 
-# Monitoring
-PRICE_UPDATE_INTERVAL=5000      # Price update interval in ms
-OPPORTUNITY_CHECK_INTERVAL=10000 # Opportunity check interval in ms
+# Monitoring Settings
+PRICE_UPDATE_INTERVAL=5000         # Price check every 5 seconds
+OPPORTUNITY_CHECK_INTERVAL=10000   # Opportunity scan every 10 seconds
+
+# Web Server
+WEB_PORT=3000                      # Web interface port
 ```
 
-## 🚀 Deployment
+### Risk Management
 
-### Deploy Smart Contracts
+The system includes multiple safety mechanisms:
 
-1. **Ethereum Mainnet**:
+- **Profit validation** before execution
+- **Gas price limits** to prevent high-cost transactions
+- **Slippage protection** for all trades
+- **Network validation** to ensure supported chains
+- **User confirmation** required for MetaMask transactions
+
+## 🏗️ Architecture
+
+### Smart Contract Layer
+```
+contracts/FlashloanArbitrage.sol    # Core arbitrage logic with Aave V3 integration
+```
+
+### Backend Services
+```
+src/
+├── index.ts                        # Main CLI bot orchestrator
+├── web-server.ts                   # Express server for web interface
+├── ArbitrageExecutor.ts            # Private key-based execution
+├── MetaMaskArbitrageExecutor.ts    # MetaMask-based execution
+├── PriceMonitor.ts                 # Multi-DEX price monitoring
+├── CrossChainArbitrage.ts          # Cross-chain opportunity detection
+├── config.ts                       # Chain and DEX configurations
+└── types.ts                        # TypeScript interfaces
+```
+
+### Frontend
+```
+public/
+├── index.html                      # Web interface
+└── app.js                          # MetaMask integration and UI logic
+```
+
+## 📊 Web Interface Features
+
+### 🔗 Wallet Connection
+- **MetaMask detection** and connection status
+- **Account information** with formatted address display
+- **Network validation** and chain switching
+- **Balance monitoring** with real-time updates
+
+### 🤖 Bot Controls
+- **Start/Stop functionality** with wallet verification
+- **Real-time status** indicators
+- **Connection requirements** enforcement
+
+### 📈 Live Statistics
+- **Opportunities found** - Total arbitrage opportunities detected
+- **Trades executed** - Number of executed transactions
+- **Success rate** - Percentage of successful trades
+- **Total profit** - Cumulative profit in ETH
+
+### 📝 Activity Log
+- **Real-time logging** of bot activities
+- **Color-coded messages** (success, warning, error)
+- **Timestamped entries** with automatic scrolling
+- **Activity filtering** and history management
+
+## 🛡️ Security
+
+### MetaMask Integration
+- **No private key storage** in browser environment
+- **User approval required** for all transactions
+- **Secure signing** through MetaMask extension
+- **Network validation** before execution
+
+### Smart Contract Security
+- **ReentrancyGuard** protection against reentrancy attacks
+- **Access control** with owner-only functions
+- **Slippage protection** in all DEX interactions
+- **Emergency withdrawal** functions for fund recovery
+
+## 🚀 Development
+
+### Available Scripts
+
 ```bash
-npx hardhat run scripts/deploy.ts --network ethereum
+npm run build              # Compile TypeScript
+npm run build:contracts    # Compile Solidity contracts
+npm run test              # Run smart contract tests
+npm run deploy            # Deploy contracts to networks
+npm start                 # Start CLI bot
+npm run start:web         # Start web interface
+npm run dev               # Development mode (CLI)
+npm run dev:web           # Development mode (web)
+npm run lint              # ESLint code checking
+npm run format            # Prettier code formatting
 ```
 
-2. **Polygon**:
+### Testing
+
 ```bash
-npx hardhat run scripts/deploy.ts --network polygon
-```
-
-3. **Arbitrum**:
-```bash
-npx hardhat run scripts/deploy.ts --network arbitrum
-```
-
-### Update Configuration
-
-After deployment, update the contract addresses in your bot configuration:
-
-```typescript
-const contractAddresses = new Map<number, string>();
-contractAddresses.set(1, 'YOUR_ETHEREUM_CONTRACT_ADDRESS');
-contractAddresses.set(137, 'YOUR_POLYGON_CONTRACT_ADDRESS');
-contractAddresses.set(42161, 'YOUR_ARBITRUM_CONTRACT_ADDRESS');
-```
-
-## 🤖 Running the Bot
-
-### Development Mode
-```bash
-npm run dev
-```
-
-### Production Mode
-```bash
-npm run build
-npm start
-```
-
-### Running Tests
-```bash
+# Run smart contract tests
 npm test
+
+# Test MetaMask integration
+npm run start:web
+# Open http://localhost:3000 and test with MetaMask
 ```
 
-## 📊 Monitoring
+## 📝 Example Usage
 
-The bot provides real-time statistics including:
+### Web Interface Workflow
 
-- **Opportunities Found**: Total arbitrage opportunities detected
-- **Trades Executed**: Number of trades attempted
-- **Success Rate**: Percentage of successful trades
-- **Total Profit**: Cumulative profit in ETH
-- **Uptime**: Bot operational time
+1. **Connect MetaMask:**
+   ```
+   🦊 Browser opens → Connect MetaMask → Approve connection
+   ```
 
-Example output:
+2. **Verify Network:**
+   ```
+   🌐 Check network → Switch if needed → Validate balance
+   ```
+
+3. **Start Trading:**
+   ```
+   🚀 Click "Start Bot" → MetaMask confirms → Bot begins monitoring
+   ```
+
+4. **Monitor Activity:**
+   ```
+   📊 Watch statistics → Review logs → Monitor profits
+   ```
+
+### CLI Workflow
+
+```bash
+# Set up environment
+export PRIVATE_KEY="your_private_key"
+export ETHEREUM_RPC_URL="your_rpc_url"
+
+# Start bot
+npm start
+
+# Monitor output
+🤖 Starting Flashloan Arbitrage Bot...
+📊 Monitoring configuration:
+   - Minimum profit threshold: 1%
+   - Check interval: 10000ms
+   - Supported chains: 4
+✅ Bot started successfully!
 ```
-📊 Bot Statistics:
-   ⏱️  Uptime: 120 minutes
-   🔍 Opportunities found: 45
-   📈 Trades executed: 12
-   ✅ Success rate: 83.3%
-   💰 Total profit: 0.0234 ETH
-```
-
-## 🔧 Advanced Configuration
-
-### Adding New DEXes
-
-To add support for a new DEX, update the contract:
-
-```solidity
-dexConfigs["newdex"] = DEXConfig({
-    router: 0xNEW_DEX_ROUTER_ADDRESS,
-    name: "New DEX",
-    isActive: true
-});
-```
-
-### Cross-Chain Configuration
-
-Configure bridge settings in `CrossChainArbitrage.ts`:
-
-```typescript
-{
-    name: 'Custom Bridge',
-    sourceChain: 1,
-    targetChain: 137,
-    bridgeAddress: '0xBRIDGE_ADDRESS',
-    fee: 0.1, // 0.1%
-    estimatedTime: 15, // minutes
-}
-```
-
-## 🛡️ Security Features
-
-- **Reentrancy Protection**: All critical functions protected against reentrancy attacks
-- **Access Control**: Owner-only functions for sensitive operations
-- **Slippage Protection**: Configurable slippage tolerance
-- **Profit Validation**: Pre-execution profitability verification
-- **Emergency Withdrawal**: Emergency fund recovery mechanism
-
-## 🔍 How It Works
-
-1. **Price Monitoring**: The bot continuously monitors prices across multiple DEXes
-2. **Opportunity Detection**: Identifies profitable arbitrage opportunities
-3. **Profitability Check**: Validates opportunities account for gas costs and fees
-4. **Flashloan Execution**: Borrows assets via Aave flashloan
-5. **Arbitrage Trade**: Executes buy/sell trades across different DEXes
-6. **Profit Realization**: Repays flashloan and keeps profit
-7. **Cross-Chain**: Optionally executes arbitrage across different chains
-
-## 📈 Supported DEXes
-
-### Ethereum
-- Uniswap V2
-- SushiSwap
-- 1inch (can be added)
-
-### Polygon
-- QuickSwap
-- SushiSwap
-
-### Arbitrum
-- Uniswap V2
-- SushiSwap
-
-### BSC
-- PancakeSwap (can be added)
-
-## ⚠️ Risk Warnings
-
-- **Market Risk**: Cryptocurrency prices are highly volatile
-- **Smart Contract Risk**: Smart contracts may contain bugs
-- **Slippage Risk**: High slippage can reduce or eliminate profits
-- **Gas Cost Risk**: High gas prices can make arbitrage unprofitable
-- **Liquidity Risk**: Low liquidity may prevent trade execution
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+2. Create a feature branch
+3. Implement your changes
+4. Add tests for new functionality
+5. Submit a pull request
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
 
-## 🙏 Acknowledgments
+## ⚠️ Disclaimer
 
-- [Aave](https://aave.com/) for flashloan infrastructure
-- [Uniswap](https://uniswap.org/) for DEX protocols
-- [OpenZeppelin](https://openzeppelin.com/) for secure smart contract libraries
-- [Hardhat](https://hardhat.org/) for development framework
+This software is for educational and research purposes. Trading cryptocurrencies involves significant risk. Users are responsible for their own trading decisions and should thoroughly test the system before using real funds.
 
-## 📞 Support
+## 🔗 Links
 
-For support and questions:
-- Create an issue in this repository
-- Join our community discussions
-- Check the documentation for troubleshooting guides
-
----
-
-**Disclaimer**: This software is for educational purposes only. Use at your own risk. The authors are not responsible for any financial losses incurred while using this software.
+- **Repository:** [https://github.com/FabianBoni/Flashloab_arbitrage](https://github.com/FabianBoni/Flashloab_arbitrage)
+- **Issues:** [https://github.com/FabianBoni/Flashloab_arbitrage/issues](https://github.com/FabianBoni/Flashloab_arbitrage/issues)
+- **MetaMask:** [https://metamask.io/](https://metamask.io/)
+- **Aave V3:** [https://aave.com/](https://aave.com/)
