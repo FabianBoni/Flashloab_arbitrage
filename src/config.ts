@@ -21,34 +21,16 @@ export const SUPPORTED_CHAINS: ChainConfig[] = [
         isActive: true,
         chainId: 56,
       },
-      {
-        name: 'ApeSwap',
-        router: '0xcF0feBd3f17CEf5b47b0cD257aCf6025c5BFf3b7',
-        factory: '0x0841BD0B734E4F5853f0dD8d7Ea041c241fb0Da6',
-        isActive: true,
-        chainId: 56,
-      },
-      {
-        name: 'BabySwap',
-        router: '0x325E343f1dE602396E256B67eFd1F61C3A6B38Bd',
-        factory: '0x86407bEa2078ea5f5EB5A52B2caA963bC1F889Da',
-        isActive: true,
-        chainId: 56,
-      },
     ],
   },
 ];
 
 export const POPULAR_TOKENS = {
-  56: { // BSC - EXPANDED for more opportunities
+  56: { // BSC - FOCUSED on most liquid pairs only
     WBNB: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c',
     USDT: '0x55d398326f99059fF775485246999027B3197955',
     BUSD: '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56',
     USDC: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d',
-    CAKE: '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', // PancakeSwap
-    BSW: '0x965F527D9159dCe6288a2219DB51fc6Eef120dD1',  // Biswap
-    BTCB: '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c', // Bitcoin BEP20
-    ETH: '0x2170Ed0880ac9A755fd29B2688956BD959F933F8',   // Ethereum BEP20
   },
 };
 
