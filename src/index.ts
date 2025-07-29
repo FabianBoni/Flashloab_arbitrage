@@ -29,12 +29,18 @@ export class FlashloanArbitrageBot {
       uptime: 0,
     };
 
+    // Check for demo mode
+    const demoMode = process.env.DEMO_MODE === 'true';
+    if (demoMode) {
+      console.log('🎭 Running in DEMO MODE with mock data');
+    }
+
     // Initialize price monitor
-    this.priceMonitor = new PriceMonitor(SUPPORTED_CHAINS);
+    this.priceMonitor = new PriceMonitor(SUPPORTED_CHAINS, demoMode);
 
     // Initialize executor with contract addresses (would need to be deployed first)
     const contractAddresses = new Map<number, string>();
-    // contractAddresses.set(1, 'YOUR_ETHEREUM_CONTRACT_ADDRESS');
+    contractAddresses.set(1, '0x5FbDB2315678afecb367f032d93F642f64180aa3'); // Mock address for testing
     // contractAddresses.set(137, 'YOUR_POLYGON_CONTRACT_ADDRESS');
     // contractAddresses.set(42161, 'YOUR_ARBITRUM_CONTRACT_ADDRESS');
 

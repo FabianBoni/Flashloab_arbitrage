@@ -1,6 +1,9 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
-import "dotenv/config";
+import * as dotenv from "dotenv";
+
+// Lade Umgebungsvariablen
+dotenv.config();
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -10,23 +13,17 @@ const config: HardhatUserConfig = {
         enabled: true,
         runs: 200,
       },
-      viaIR: true, // Enables Intermediate Representation compilation to avoid "stack too deep"
     },
   },
   networks: {
     hardhat: {
-      // Comment out forking for local deployment
-      // forking: {
-      //   url: process.env.ETHEREUM_RPC_URL || "https://eth-mainnet.alchemyapi.io/v2/your-api-key",
-      //   blockNumber: 18500000, // Recent block for testing
-      // },
+      forking: {
+        url: process.env.ETHEREUM_RPC_URL || "https://eth-mainnet.alchemyapi.io/v2/your-api-key",
+        blockNumber: 18500000, // Recent block for testing
+      },
     },
     ethereum: {
       url: process.env.ETHEREUM_RPC_URL || "",
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-    },
-    sepolia: {
-      url: process.env.SEPOLIA_RPC_URL || "https://rpc.sepolia.org",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
     },
     polygon: {
@@ -50,7 +47,7 @@ const config: HardhatUserConfig = {
       arbitrumOne: process.env.ETHERSCAN_API_KEY || "", // V2: Same key for all chains
       bsc: process.env.ETHERSCAN_API_KEY || "", // V2: Same key for all chains
     },
-    // Etherscan V2 API URLs (if needed for custom configurations)
+    // Etherscan V2 API URLs (optional custom configurations)
     customChains: [
       {
         network: "polygon",

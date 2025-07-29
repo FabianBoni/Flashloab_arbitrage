@@ -17,20 +17,25 @@ const ERC20_ABI = [
 export class PriceMonitor {
   private providers: Map<number, ethers.JsonRpcProvider> = new Map();
   private routers: Map<string, ethers.Contract> = new Map();
+  private demoMode: boolean;
 
-  constructor(chainConfigs: Array<{ chainId: number; rpcUrl: string; dexes: DEXConfig[] }>) {
-    // Initialize providers and router contracts
-    chainConfigs.forEach(config => {
-      if (config.rpcUrl) {
-        const provider = new ethers.JsonRpcProvider(config.rpcUrl);
-        this.providers.set(config.chainId, provider);
+  constructor(chainConfigs: Array<{ chainId: number; rpcUrl: string; dexes: DEXConfig[] }>, demoMode = false) {
+    this.demoMode = demoMode;
+    
+    if (!demoMode) {
+      // Initialize providers and router contracts only in live mode
+      chainConfigs.forEach(config => {
+        if (config.rpcUrl) {
+          const provider = new ethers.JsonRpcProvider(config.rpcUrl);
+          this.providers.set(config.chainId, provider);
 
-        config.dexes.forEach(dex => {
-          const router = new ethers.Contract(dex.router, UNISWAP_V2_ROUTER_ABI, provider);
-          this.routers.set(`${config.chainId}-${dex.name}`, router);
-        });
-      }
-    });
+          config.dexes.forEach(dex => {
+            const router = new ethers.Contract(dex.router, UNISWAP_V2_ROUTER_ABI, provider);
+            this.routers.set(`${config.chainId}-${dex.name}`, router);
+          });
+        }
+      });
+    }
   }
 
   /**
@@ -44,6 +49,14 @@ export class PriceMonitor {
     amountIn: bigint
   ): Promise<bigint> {
     try {
+      if (this.demoMode) {
+        // Return mock prices for demo mode
+        const basePrice = BigInt("1000000000000000000"); // 1 ETH equivalent
+        const variation = Math.random() * 0.1 - 0.05; // ±5% variation
+        const mockPrice = BigInt(Math.floor(Number(basePrice) * (1 + variation)));
+        return mockPrice;
+      }
+
       const routerKey = `${chainId}-${dexName}`;
       const router = this.routers.get(routerKey);
       

@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "ES2022",
     "module": "commonjs",
-    "lib": ["ES2020", "DOM"],
+    "lib": ["ES2022", "DOM"],
     "outDir": "./dist",
     "strict": true,
     "esModuleInterop": true,
@@ -11,17 +11,20 @@
     "resolveJsonModule": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "types": ["node"],
+    "moduleResolution": "node"
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "scripts/**/*",
+    "test/**/*",
+    "hardhat.config.ts"
   ],
   "exclude": [
     "node_modules",
     "dist",
     "artifacts",
-    "cache",
-    "scripts",
-    "test"
+    "cache"
   ]
 }

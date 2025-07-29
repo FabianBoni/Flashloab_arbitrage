@@ -2,6 +2,8 @@
 
 A comprehensive flashloan arbitrage system that automatically detects and executes profitable arbitrage opportunities across multiple DEXes and blockchain networks, with full **MetaMask integration**.
 
+> ✅ **Updated to Etherscan V2 API** - Now supports 50+ chains with a single API key!
+
 ## ✨ Key Features
 
 ### 🦊 MetaMask Integration
@@ -17,7 +19,13 @@ A comprehensive flashloan arbitrage system that automatically detects and execut
 - **Flashloan-based execution** via Aave V3 for capital efficiency
 - **Risk management** with configurable profit thresholds and slippage protection
 
-### 📊 Real-time Dashboard
+### � Etherscan V2 Integration
+- **Single API key** for all supported blockchain networks
+- **Contract verification** across 50+ chains with one configuration
+- **Real-time transaction monitoring** and balance queries
+- **Future-proof** architecture that automatically supports new chains
+
+### �📊 Real-time Dashboard
 - **Live statistics** - opportunities found, trades executed, success rate, total profit
 - **Activity monitoring** with detailed logging
 - **Bot controls** - start/stop with wallet verification
@@ -71,6 +79,13 @@ npm install
 # Setup environment
 cp .env.example .env
 # Edit .env with your configuration
+# Note: Only ETHERSCAN_API_KEY needed for all chains with V2!
+
+# Compile smart contracts
+npm run build:contracts
+
+# Test your Etherscan V2 configuration
+npm run test:etherscan
 
 # Build the project
 npm run build
@@ -140,6 +155,14 @@ BSC_RPC_URL=https://bsc-dataseed.binance.org/
 # Wallet Configuration
 PRIVATE_KEY=your_private_key_here  # For CLI mode only
 
+# 🆕 Etherscan V2 API Configuration (Single API Key for All Chains!)
+ETHERSCAN_API_KEY=your_etherscan_api_key  # Works for Ethereum, Polygon, Arbitrum, BSC, and 50+ other chains!
+
+# Legacy API keys (no longer needed with V2)
+# POLYGONSCAN_API_KEY=your_polygonscan_api_key
+# ARBISCAN_API_KEY=your_arbiscan_api_key  
+# BSCSCAN_API_KEY=your_bscscan_api_key
+
 # Trading Parameters
 MIN_PROFIT_THRESHOLD=0.01          # Minimum 1% profit
 MAX_GAS_PRICE=50                   # Max 50 gwei gas price
@@ -152,6 +175,41 @@ OPPORTUNITY_CHECK_INTERVAL=10000   # Opportunity scan every 10 seconds
 # Web Server
 WEB_PORT=3000                      # Web interface port
 ```
+
+### 🆕 Etherscan V2 Benefits
+
+With the new Etherscan V2 API, you now enjoy:
+
+✅ **Single API Key**: One key works across 50+ supported chains  
+✅ **Unified Endpoint**: `https://api.etherscan.io/v2/api` for all chains  
+✅ **Simplified Configuration**: No more managing multiple API keys  
+✅ **Future-Proof**: Automatically supports new chains as they're added  
+✅ **Better Rate Limits**: Improved performance and reliability  
+
+**Supported Chains Include:**
+- Ethereum (1)
+- Polygon (137) 
+- Arbitrum (42161)
+- BSC (56)
+- Optimism (10)
+- Base (8453)
+- Scroll (534352)
+- Blast (81457)
+- And many more!
+
+#### 🧪 Test Your Configuration
+
+Test the new Etherscan V2 setup:
+
+```bash
+# Simple test script
+npm run test:etherscan
+
+# Advanced demo with examples
+npm run etherscan:demo
+```
+
+Both scripts will verify your API key works across multiple chains and show real-time balance queries.
 
 ### Risk Management
 
@@ -234,14 +292,26 @@ public/
 ### Available Scripts
 
 ```bash
+# Build & Test
 npm run build              # Compile TypeScript
 npm run build:contracts    # Compile Solidity contracts
 npm run test              # Run smart contract tests
+
+# 🆕 Etherscan V2 Testing
+npm run test:etherscan     # Quick API test across multiple chains
+npm run etherscan:demo     # Comprehensive V2 demo with examples
+
+# Deployment & Production
 npm run deploy            # Deploy contracts to networks
 npm start                 # Start CLI bot
 npm run start:web         # Start web interface
+
+# Development
 npm run dev               # Development mode (CLI)
 npm run dev:web           # Development mode (web)
+npm run example           # Run usage examples
+
+# Code Quality
 npm run lint              # ESLint code checking
 npm run format            # Prettier code formatting
 ```
@@ -322,3 +392,39 @@ This software is for educational and research purposes. Trading cryptocurrencies
 - **Issues:** [https://github.com/FabianBoni/Flashloab_arbitrage/issues](https://github.com/FabianBoni/Flashloab_arbitrage/issues)
 - **MetaMask:** [https://metamask.io/](https://metamask.io/)
 - **Aave V3:** [https://aave.com/](https://aave.com/)
+- **Etherscan V2:** [https://docs.etherscan.io/etherscan-v2](https://docs.etherscan.io/etherscan-v2)
+
+---
+
+## 📋 Changelog
+
+### v1.1.0 - Etherscan V2 Update (July 29, 2025)
+
+#### ✅ **New Features**
+- **Etherscan V2 API Integration** - Single API key for all supported chains
+- **EtherscanV2Helper Class** - Comprehensive API wrapper for V2 functionality
+- **Multi-chain Contract Verification** - Unified verification across 50+ chains
+- **Enhanced Testing Scripts** - `npm run test:etherscan` and `npm run etherscan:demo`
+
+#### 🔧 **Configuration Improvements**
+- **Simplified .env setup** - Removed need for separate POLYGONSCAN_API_KEY, ARBISCAN_API_KEY, BSCSCAN_API_KEY
+- **Updated hardhat.config.ts** - V2 API endpoints and unified key configuration
+- **Enhanced TypeScript support** - Fixed all compilation errors and improved type definitions
+
+#### 🐛 **Bug Fixes & Build Improvements**
+- **Fixed Smart Contract compilation** - Resolved interface placement and address checksum issues
+- **Updated Solidity optimizer** - Added viaIR compilation to handle complex contract structures
+- **Fixed BigInt arithmetic** - Corrected TypeScript errors in test files
+- **Updated deprecated functions** - Replaced `safeApprove` with `forceApprove` for OpenZeppelin compatibility
+
+#### 📖 **Documentation Updates**
+- **Complete README overhaul** - Added V2 benefits, configuration guides, and testing instructions
+- **Migration documentation** - Clear guidance for upgrading from V1 to V2
+- **New utility scripts** - Comprehensive examples and demos
+
+#### ⚡ **Performance & Reliability**
+- **Better rate limits** - Improved API call efficiency with V2
+- **Future-proof architecture** - Automatic support for new chains as they're added
+- **Unified error handling** - Consistent API responses across all chains
+
+**Migration Required:** Update your `.env` file to use only `ETHERSCAN_API_KEY` for all chains.

@@ -6,6 +6,35 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+// Aave V3 Pool interface for flashloans
+interface IPool {
+    function flashLoan(
+        address receiverAddress,
+        address[] calldata assets,
+        uint256[] calldata amounts,
+        uint256[] calldata modes,
+        address onBehalfOf,
+        bytes calldata params,
+        uint16 referralCode
+    ) external;
+}
+
+// Generic DEX interface
+interface IDEX {
+    function swapExactTokensForTokens(
+        uint256 amountIn,
+        uint256 amountOutMin,
+        address[] calldata path,
+        address to,
+        uint256 deadline
+    ) external returns (uint256[] memory amounts);
+
+    function getAmountsOut(uint256 amountIn, address[] calldata path)
+        external
+        view
+        returns (uint256[] memory amounts);
+}
+
 /**
  * @title FlashloanArbitrage
  * @dev Smart contract for executing flashloan arbitrage trades
@@ -28,37 +57,8 @@ contract FlashloanArbitrage is ReentrancyGuard, Ownable {
         uint256 premium
     );
 
-    // Aave V3 Pool interface for flashloans
-    interface IPool {
-        function flashLoan(
-            address receiverAddress,
-            address[] calldata assets,
-            uint256[] calldata amounts,
-            uint256[] calldata modes,
-            address onBehalfOf,
-            bytes calldata params,
-            uint16 referralCode
-        ) external;
-    }
-
-    // Generic DEX interface
-    interface IDEX {
-        function swapExactTokensForTokens(
-            uint256 amountIn,
-            uint256 amountOutMin,
-            address[] calldata path,
-            address to,
-            uint256 deadline
-        ) external returns (uint256[] memory amounts);
-
-        function getAmountsOut(uint256 amountIn, address[] calldata path)
-            external
-            view
-            returns (uint256[] memory amounts);
-    }
-
-    // Aave pool address (mainnet)
-    IPool public constant AAVE_POOL = IPool(0x87870Bca3F8fC6aa600BDeDBaFB3ba45C17D2b5);
+    // Aave pool address (mainnet) - Correct checksummed address
+    IPool public constant AAVE_POOL = IPool(0x87870Bca3F8Fc6AA600bDEDbafB3Ba45c17D2B58);
     
     // DEX configurations
     struct DEXConfig {
@@ -163,7 +163,7 @@ contract FlashloanArbitrage is ReentrancyGuard, Ownable {
         require(IERC20(asset).balanceOf(address(this)) >= amountOwed, "Insufficient balance to repay");
 
         // Approve repayment
-        IERC20(asset).safeApprove(address(AAVE_POOL), amountOwed);
+        IERC20(asset).forceApprove(address(AAVE_POOL), amountOwed);
 
         emit FlashloanExecuted(asset, amounts[0], premiums[0]);
         emit ArbitrageExecuted(asset, borrowAmount, profit, dexConfigs[dexA].router, dexConfigs[dexB].router);
@@ -184,7 +184,7 @@ contract FlashloanArbitrage is ReentrancyGuard, Ownable {
         uint256 initialBalance = IERC20(asset).balanceOf(address(this));
 
         // Buy from DEX A
-        IERC20(asset).safeApprove(dexConfigs[dexA].router, amount);
+        IERC20(asset).forceApprove(dexConfigs[dexA].router, amount);
         
         uint256[] memory amountsOut = IDEX(dexConfigs[dexA].router).swapExactTokensForTokens(
             amount,
@@ -205,7 +205,7 @@ contract FlashloanArbitrage is ReentrancyGuard, Ownable {
         }
 
         // Sell on DEX B
-        IERC20(intermediateToken).safeApprove(dexConfigs[dexB].router, intermediateAmount);
+        IERC20(intermediateToken).forceApprove(dexConfigs[dexB].router, intermediateAmount);
         
         IDEX(dexConfigs[dexB].router).swapExactTokensForTokens(
             intermediateAmount,
