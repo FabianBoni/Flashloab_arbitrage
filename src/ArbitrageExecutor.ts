@@ -1,12 +1,14 @@
 import { ethers } from 'ethers';
 import { ArbitrageOpportunity, ChainConfig } from './types';
 
-const FLASHLOAN_ARBITRAGE_ABI = [
-  'function executeArbitrage(address asset, uint256 amount, string calldata dexA, string calldata dexB, address[] calldata path) external',
+const UNIVERSAL_FLASHLOAN_ARBITRAGE_ABI = [
+  'function executeArbitrage(address asset, uint256 amount, string calldata dexA, string calldata dexB, address[] calldata path, uint256 minProfit) external',
   'function isArbitrageProfitable(uint256 amount, string memory dexA, string memory dexB, address[] memory path) external view returns (bool)',
   'function calculateArbitrageProfit(uint256 amount, string memory dexA, string memory dexB, address[] memory path) external view returns (uint256)',
   'function updateMinProfitThreshold(uint256 newThreshold) external',
+  'function setAuthorizedCaller(address caller, bool authorized) external',
   'function owner() external view returns (address)',
+  'event ArbitrageExecuted(address indexed asset, uint256 amount, uint256 profit, string dexA, string dexB, uint8 provider)'
 ];
 
 export class ArbitrageExecutor {
@@ -30,7 +32,7 @@ export class ArbitrageExecutor {
         
         const contract = new ethers.Contract(
           contractAddress,
-          FLASHLOAN_ARBITRAGE_ABI,
+          UNIVERSAL_FLASHLOAN_ARBITRAGE_ABI,
           wallet
         );
 
@@ -57,7 +59,7 @@ export class ArbitrageExecutor {
       const contract = this.contracts.get(chainId);
       
       if (!contract) {
-        throw new Error(`Contract not found for chain ${chainId}`);
+        throw new Error(`⚠️  Contract not deployed for chain ${chainId}. Please deploy the flashloan arbitrage contract to this chain first, or set DEMO_MODE=true to test with mock data.`);
       }
 
       // Verify the opportunity is still profitable
@@ -69,46 +71,54 @@ export class ArbitrageExecutor {
         };
       }
 
-      // Estimate gas
-      const gasEstimate = await this.estimateGas(opportunity, chainId);
-      console.log(`⛽ Estimated gas: ${gasEstimate.toString()}`);
-
-      // Execute the transaction
+      // Execute real arbitrage with flashloan
+      console.log('🚀 EXECUTING REAL ARBITRAGE WITH FLASHLOAN');
+      console.log(`📊 Trade details:`);
+      console.log(`   Token A: ${opportunity.tokenA}`);
+      console.log(`   Token B: ${opportunity.tokenB}`);
+      console.log(`   Amount: ${opportunity.amountIn}`);
+      console.log(`   Buy from: ${opportunity.dexA}`);
+      console.log(`   Sell to: ${opportunity.dexB}`);
+      console.log(`   Expected profit: ${opportunity.profitPercent.toFixed(2)}%`);
+      
+      // Calculate minimum profit (1% of input amount)
+      const minProfit = BigInt(opportunity.amountIn) / BigInt(100);
+      
+      // Execute the arbitrage transaction
       const tx = await contract.executeArbitrage(
         opportunity.tokenA,
         BigInt(opportunity.amountIn),
         opportunity.dexA,
         opportunity.dexB,
         opportunity.path,
+        minProfit,
         {
-          gasLimit: gasEstimate,
-          maxFeePerGas: ethers.parseUnits('50', 'gwei'), // Max 50 gwei
-          maxPriorityFeePerGas: ethers.parseUnits('2', 'gwei'),
+          gasLimit: 1000000, // 1M gas limit
+          gasPrice: ethers.parseUnits('5', 'gwei') // 5 gwei
         }
       );
-
-      console.log(`📝 Transaction submitted: ${tx.hash}`);
       
-      // Wait for confirmation
-      const receipt = await tx.wait(2); // Wait for 2 confirmations
+      console.log(`📝 Transaction sent: ${tx.hash}`);
+      console.log('⏳ Waiting for confirmation...');
       
-      if (receipt.status === 1) {
-        console.log(`✅ Arbitrage executed successfully!`);
+      const receipt = await tx.wait();
+      
+      if (receipt && receipt.status === 1) {
+        // Parse the ArbitrageExecuted event to get actual profit
+        const actualProfit = await this.calculateActualProfit(receipt, opportunity);
+        const profitEth = ethers.formatEther(actualProfit);
         
-        // Parse logs to get actual profit
-        const profit = await this.calculateActualProfit(receipt, opportunity);
+        console.log(`✅ REAL ARBITRAGE EXECUTED SUCCESSFULLY!`);
+        console.log(`📝 Transaction: ${tx.hash}`);
+        console.log(`💰 Actual profit: ${profitEth} ETH`);
         
         return {
           success: true,
           txHash: tx.hash,
-          profit: profit.toString(),
+          profit: profitEth,
         };
       } else {
-        return {
-          success: false,
-          txHash: tx.hash,
-          error: 'Transaction failed',
-        };
+        throw new Error('Transaction failed');
       }
     } catch (error: any) {
       console.error('❌ Arbitrage execution failed:', error);
@@ -121,24 +131,47 @@ export class ArbitrageExecutor {
   }
 
   /**
-   * Verify if opportunity is still profitable
+   * Verify if opportunity is still profitable using smart contract
    */
   private async verifyProfitability(opportunity: ArbitrageOpportunity, chainId: number): Promise<boolean> {
     try {
       const contract = this.contracts.get(chainId);
-      if (!contract) return false;
+      if (!contract) {
+        console.log('⚠️  No contract available, using simple threshold check');
+        return opportunity.profitPercent > 2.0;
+      }
 
+      console.log(`💡 Checking on-chain profitability for ${opportunity.profitPercent.toFixed(2)}% opportunity`);
+      
+      // Use smart contract to verify profitability
       const isProfitable = await contract.isArbitrageProfitable(
         BigInt(opportunity.amountIn),
         opportunity.dexA,
         opportunity.dexB,
         opportunity.path
       );
-
-      return isProfitable;
+      
+      if (isProfitable) {
+        // Get exact profit amount
+        const profitAmount = await contract.calculateArbitrageProfit(
+          BigInt(opportunity.amountIn),
+          opportunity.dexA,
+          opportunity.dexB,
+          opportunity.path
+        );
+        
+        const profitEth = ethers.formatEther(profitAmount);
+        console.log(`✅ Contract confirms profitability: ${profitEth} ETH profit`);
+        return true;
+      } else {
+        console.log('⚠️  Contract indicates opportunity no longer profitable');
+        return false;
+      }
     } catch (error) {
       console.error('Error verifying profitability:', error);
-      return false;
+      // Fallback to simple check
+      console.log('📊 Using fallback profitability check');
+      return opportunity.profitPercent > 2.0;
     }
   }
 
@@ -182,11 +215,19 @@ export class ArbitrageExecutor {
       for (const log of receipt.logs) {
         try {
           const parsed = contract.interface.parseLog({
-            topics: log.topics,
+            topics: log.topics as string[],
             data: log.data,
           });
 
           if (parsed && parsed.name === 'ArbitrageExecuted') {
+            console.log('📊 Arbitrage event found:');
+            console.log(`   Asset: ${parsed.args.asset}`);
+            console.log(`   Amount: ${ethers.formatEther(parsed.args.amount)} ETH`);
+            console.log(`   Profit: ${ethers.formatEther(parsed.args.profit)} ETH`);
+            console.log(`   DEX A: ${parsed.args.dexA}`);
+            console.log(`   DEX B: ${parsed.args.dexB}`);
+            console.log(`   Provider: ${parsed.args.provider}`);
+            
             return parsed.args.profit;
           }
         } catch (error) {
@@ -206,9 +247,8 @@ export class ArbitrageExecutor {
    * Get chain ID from opportunity (simplified - in reality would need more context)
    */
   private getChainIdFromOpportunity(opportunity: ArbitrageOpportunity): number {
-    // For now, assume Ethereum mainnet. In a real implementation,
-    // this would be determined from the DEX addresses or other context
-    return 1;
+    // Return the chainId from the opportunity
+    return opportunity.chainId;
   }
 
   /**

@@ -38,9 +38,10 @@ export class FlashloanArbitrageBot {
     // Initialize price monitor
     this.priceMonitor = new PriceMonitor(SUPPORTED_CHAINS, demoMode);
 
-    // Initialize executor with contract addresses (would need to be deployed first)
+    // Initialize executor with contract addresses
     const contractAddresses = new Map<number, string>();
     contractAddresses.set(1, '0x5FbDB2315678afecb367f032d93F642f64180aa3'); // Mock address for testing
+    contractAddresses.set(56, '0xDf9b5f44edae76901a6190496467002aEFCEf677'); // Universal Flashloan Contract on BSC
     // contractAddresses.set(137, 'YOUR_POLYGON_CONTRACT_ADDRESS');
     // contractAddresses.set(42161, 'YOUR_ARBITRUM_CONTRACT_ADDRESS');
 

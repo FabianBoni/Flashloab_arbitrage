@@ -17,6 +17,7 @@ export interface ArbitrageOpportunity {
   path: string[];
   gasEstimate: string;
   timestamp: number;
+  chainId: number; // Add chainId to identify which chain the opportunity is on
 }
 
 export interface ChainConfig {

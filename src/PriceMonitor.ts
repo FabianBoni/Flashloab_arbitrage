@@ -139,6 +139,7 @@ export class PriceMonitor {
               path: [tokenA, tokenB],
               gasEstimate: '0', // Will be estimated
               timestamp: Date.now(),
+              chainId, // Add the chainId from the function parameter
             });
           }
         }
