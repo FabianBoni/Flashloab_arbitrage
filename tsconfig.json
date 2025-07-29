@@ -17,14 +17,14 @@
   },
   "include": [
     "src/**/*",
-    "scripts/**/*",
-    "test/**/*",
     "hardhat.config.ts"
   ],
   "exclude": [
     "node_modules",
     "dist",
     "artifacts",
-    "cache"
+    "cache",
+    "scripts/**/*",
+    "test/**/*"
   ]
 }

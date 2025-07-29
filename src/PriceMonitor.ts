@@ -126,14 +126,19 @@ export class PriceMonitor {
           const profit = sellPrice - buyPrice;
           const profitPercent = Number(profit * BigInt(10000) / buyPrice) / 100; // Convert to percentage
 
-          // Check if profitable (accounting for fees)
-          if (profitPercent > 0.5) { // Minimum 0.5% profit to account for gas and fees
+          // Calculate flashloan fee (0.25% for PancakeSwap flashloans)
+          const flashloanFeePercent = 0.25;
+          const netProfitPercent = profitPercent - flashloanFeePercent;
+
+          // Check if profitable after accounting for flashloan fees and gas
+          // Require minimum 0.5% NET profit after all fees
+          if (netProfitPercent > 0.5) { 
             opportunities.push({
               tokenA,
               tokenB,
               amountIn: amountIn.toString(),
               profitUSD: 0, // Will be calculated based on USD prices
-              profitPercent,
+              profitPercent: netProfitPercent, // Use NET profit percentage
               dexA: buyDex,
               dexB: sellDex,
               path: [tokenA, tokenB],

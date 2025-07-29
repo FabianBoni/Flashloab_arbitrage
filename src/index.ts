@@ -41,7 +41,7 @@ export class FlashloanArbitrageBot {
     // Initialize executor with contract addresses
     const contractAddresses = new Map<number, string>();
     contractAddresses.set(1, '0x5FbDB2315678afecb367f032d93F642f64180aa3'); // Mock address for testing
-    contractAddresses.set(56, '0xDf9b5f44edae76901a6190496467002aEFCEf677'); // Universal Flashloan Contract on BSC
+    contractAddresses.set(56, '0x0FA4cab40651cfcb308C169fd593E92F2f0cf805'); // REAL PancakeSwap Flashloan Contract on BSC
     // contractAddresses.set(137, 'YOUR_POLYGON_CONTRACT_ADDRESS');
     // contractAddresses.set(42161, 'YOUR_ARBITRUM_CONTRACT_ADDRESS');
 
@@ -104,13 +104,31 @@ export class FlashloanArbitrageBot {
       return;
     }
 
-    console.log(`💡 Found ${profitableOpportunities.length} profitable opportunities`);
+    console.log(`💡 Found ${profitableOpportunities.length} potentially profitable opportunities`);
+
+    // PRE-VALIDATE with smart contract before execution
+    console.log(`🔍 Pre-validating opportunities with smart contract...`);
+    const validatedOpportunities: ArbitrageOpportunity[] = [];
+    
+    for (const opportunity of profitableOpportunities) {
+      const isValid = await this.executor.preValidateOpportunity(opportunity);
+      if (isValid) {
+        validatedOpportunities.push(opportunity);
+      }
+    }
+
+    if (validatedOpportunities.length === 0) {
+      console.log(`⚠️  No opportunities passed contract validation (market conditions changed)`);
+      return;
+    }
+
+    console.log(`✅ ${validatedOpportunities.length} opportunities passed contract validation`);
 
     // Sort by profitability (highest first)
-    profitableOpportunities.sort((a, b) => b.profitPercent - a.profitPercent);
+    validatedOpportunities.sort((a, b) => b.profitPercent - a.profitPercent);
 
     // Execute the most profitable opportunities (limit to prevent spam)
-    const toExecute = profitableOpportunities.slice(0, 3);
+    const toExecute = validatedOpportunities.slice(0, 3);
 
     for (const opportunity of toExecute) {
       await this.executeOpportunity(opportunity);

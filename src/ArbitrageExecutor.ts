@@ -1,14 +1,15 @@
 import { ethers } from 'ethers';
 import { ArbitrageOpportunity, ChainConfig } from './types';
 
-const UNIVERSAL_FLASHLOAN_ARBITRAGE_ABI = [
+const PANCAKE_FLASHLOAN_ARBITRAGE_ABI = [
   'function executeArbitrage(address asset, uint256 amount, string calldata dexA, string calldata dexB, address[] calldata path, uint256 minProfit) external',
   'function isArbitrageProfitable(uint256 amount, string memory dexA, string memory dexB, address[] memory path) external view returns (bool)',
   'function calculateArbitrageProfit(uint256 amount, string memory dexA, string memory dexB, address[] memory path) external view returns (uint256)',
   'function updateMinProfitThreshold(uint256 newThreshold) external',
   'function setAuthorizedCaller(address caller, bool authorized) external',
   'function owner() external view returns (address)',
-  'event ArbitrageExecuted(address indexed asset, uint256 amount, uint256 profit, string dexA, string dexB, uint8 provider)'
+  'event ArbitrageExecuted(address indexed asset, uint256 amount, uint256 profit, string dexA, string dexB)',
+  'event FlashloanExecuted(address indexed pair, address indexed token, uint256 amount, uint256 fee)'
 ];
 
 export class ArbitrageExecutor {
@@ -32,7 +33,7 @@ export class ArbitrageExecutor {
         
         const contract = new ethers.Contract(
           contractAddress,
-          UNIVERSAL_FLASHLOAN_ARBITRAGE_ABI,
+          PANCAKE_FLASHLOAN_ARBITRAGE_ABI,
           wallet
         );
 
@@ -292,6 +293,42 @@ export class ArbitrageExecutor {
     } catch (error) {
       console.error('Error getting estimated profit:', error);
       return BigInt(0);
+    }
+  }
+
+  /**
+   * Pre-validate opportunity with contract before reporting it
+   */
+  async preValidateOpportunity(opportunity: ArbitrageOpportunity): Promise<boolean> {
+    try {
+      const chainId = opportunity.chainId;
+      const contract = this.contracts.get(chainId);
+      
+      if (!contract) {
+        console.log('⚠️  No contract available for pre-validation, skipping');
+        return true; // Allow if no contract to validate with
+      }
+
+      // Quick contract check
+      const isProfitable = await contract.isArbitrageProfitable(
+        BigInt(opportunity.amountIn),
+        opportunity.dexA.toLowerCase(),
+        opportunity.dexB.toLowerCase(),
+        opportunity.path
+      );
+
+      if (!isProfitable) {
+        console.log(`⚠️  Contract pre-validation FAILED for ${opportunity.profitPercent.toFixed(2)}% opportunity`);
+        console.log(`   Route: ${opportunity.dexA} -> ${opportunity.dexB}`);
+        console.log(`   Reason: Contract says not profitable (likely due to changed market conditions)`);
+        return false;
+      }
+
+      console.log(`✅ Contract pre-validation PASSED for ${opportunity.profitPercent.toFixed(2)}% opportunity`);
+      return true;
+    } catch (error: any) {
+      console.log(`⚠️  Contract pre-validation error: ${error.message}`);
+      return false; // Be conservative - reject if validation fails
     }
   }
 }
