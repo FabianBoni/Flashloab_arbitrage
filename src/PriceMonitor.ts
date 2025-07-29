@@ -130,9 +130,9 @@ export class PriceMonitor {
           const flashloanFeePercent = 0.25;
           const netProfitPercent = profitPercent - flashloanFeePercent;
 
-          // Check if profitable after accounting for flashloan fees and gas
-          // Require minimum 0.5% NET profit after all fees
-          if (netProfitPercent > 0.5) { 
+          // ULTRA AGGRESSIVE: Accept smaller profits for maximum capture rate
+          // Require minimum 0.2% NET profit after all fees
+          if (netProfitPercent > 0.2) { 
             opportunities.push({
               tokenA,
               tokenB,

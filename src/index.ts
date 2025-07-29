@@ -13,11 +13,13 @@ interface BotStats {
 }
 
 export class FlashloanArbitrageBot {
+  private static instance: FlashloanArbitrageBot | null = null;
   private priceMonitor: PriceMonitor;
   private executor: ArbitrageExecutor;
   private stats: BotStats;
   private startTime: number;
   private isRunning: boolean = false;
+  private currentOpportunities: ArbitrageOpportunity[] = [];
 
   constructor() {
     this.startTime = Date.now();
@@ -51,6 +53,16 @@ export class FlashloanArbitrageBot {
     }
 
     this.executor = new ArbitrageExecutor(SUPPORTED_CHAINS, privateKey, contractAddresses);
+    
+    // Set singleton instance
+    FlashloanArbitrageBot.instance = this;
+  }
+
+  /**
+   * Get the singleton instance of the bot
+   */
+  static getInstance(): FlashloanArbitrageBot | null {
+    return FlashloanArbitrageBot.instance;
   }
 
   /**
@@ -93,6 +105,9 @@ export class FlashloanArbitrageBot {
    * Handle discovered arbitrage opportunities
    */
   private async handleOpportunities(opportunities: ArbitrageOpportunity[]): Promise<void> {
+    // Store current opportunities for dashboard
+    this.currentOpportunities = opportunities;
+    
     this.stats.opportunitiesFound += opportunities.length;
 
     // Filter opportunities by profitability threshold
@@ -221,6 +236,20 @@ export class FlashloanArbitrageBot {
       ...this.stats,
       uptime: Date.now() - this.startTime,
     };
+  }
+
+  /**
+   * Get current opportunities
+   */
+  getCurrentOpportunities(): ArbitrageOpportunity[] {
+    return [...this.currentOpportunities];
+  }
+
+  /**
+   * Check if bot is running
+   */
+  getIsRunning(): boolean {
+    return this.isRunning;
   }
 }
 

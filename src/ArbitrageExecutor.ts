@@ -82,10 +82,10 @@ export class ArbitrageExecutor {
       console.log(`   Sell to: ${opportunity.dexB}`);
       console.log(`   Expected profit: ${opportunity.profitPercent.toFixed(2)}%`);
       
-      // Calculate minimum profit (1% of input amount)
-      const minProfit = BigInt(opportunity.amountIn) / BigInt(100);
+      // Calculate minimum profit - LOWERED for maximum capture rate
+      const minProfit = BigInt(opportunity.amountIn) / BigInt(2000); // 0.05% minimum profit
       
-      // Execute the arbitrage transaction
+      // Execute the arbitrage transaction with OPTIMIZED settings
       const tx = await contract.executeArbitrage(
         opportunity.tokenA,
         BigInt(opportunity.amountIn),
@@ -94,8 +94,10 @@ export class ArbitrageExecutor {
         opportunity.path,
         minProfit,
         {
-          gasLimit: 1000000, // 1M gas limit
-          gasPrice: ethers.parseUnits('5', 'gwei') // 5 gwei
+          gasLimit: 1500000, // Higher gas limit for complex operations
+          gasPrice: ethers.parseUnits('12', 'gwei'), // Competitive gas price
+          maxFeePerGas: ethers.parseUnits('15', 'gwei'), // Priority fee
+          maxPriorityFeePerGas: ethers.parseUnits('2', 'gwei') // Tip for miners
         }
       );
       
@@ -170,9 +172,9 @@ export class ArbitrageExecutor {
       }
     } catch (error) {
       console.error('Error verifying profitability:', error);
-      // Fallback to simple check
-      console.log('📊 Using fallback profitability check');
-      return opportunity.profitPercent > 2.0;
+      // Fallback to AGGRESSIVE check - accept smaller profits
+      console.log('📊 Using fallback profitability check - AGGRESSIVE MODE');
+      return opportunity.profitPercent > 0.5; // Accept 0.5% or higher
     }
   }
 

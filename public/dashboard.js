@@ -128,8 +128,14 @@ class ArbitrageDashboard {
                 this.updateUI();
                 this.log('Bot started successfully', 'success');
             } else {
-                const error = await response.text();
-                this.log(`Failed to start bot: ${error}`, 'error');
+                const errorData = await response.json();
+                if (errorData.error && errorData.error.includes('already running from main process')) {
+                    this.log('Bot is already running from terminal. Dashboard will show live data.', 'info');
+                    this.botRunning = true;
+                    this.updateUI();
+                } else {
+                    this.log(`Failed to start bot: ${errorData.error || 'Unknown error'}`, 'error');
+                }
             }
         } catch (error) {
             this.log(`Failed to start bot: ${error.message}`, 'error');
@@ -145,8 +151,12 @@ class ArbitrageDashboard {
                 this.updateUI();
                 this.log('Bot stopped', 'warning');
             } else {
-                const error = await response.text();
-                this.log(`Failed to stop bot: ${error}`, 'error');
+                const errorData = await response.json();
+                if (errorData.error && errorData.error.includes('main process')) {
+                    this.log('Cannot stop bot from dashboard - it was started from terminal. Use Ctrl+C in terminal to stop.', 'warning');
+                } else {
+                    this.log(`Failed to stop bot: ${errorData.error || 'Unknown error'}`, 'error');
+                }
             }
         } catch (error) {
             this.log(`Failed to stop bot: ${error.message}`, 'error');
@@ -189,12 +199,21 @@ class ArbitrageDashboard {
     }
 
     startDataPolling() {
-        // Poll for bot status and opportunities every 5 seconds
+        // Poll for bot status and opportunities every 1 second for real-time updates
         setInterval(async () => {
             await this.updateBotStatus();
             await this.updateOpportunities();
+        }, 1000);
+        
+        // Update flashloan fees less frequently (every 30 seconds)
+        setInterval(async () => {
             await this.updateFlashloanFees();
-        }, 5000);
+        }, 30000);
+        
+        // Initial updates
+        this.updateBotStatus();
+        this.updateOpportunities();
+        this.updateFlashloanFees();
     }
 
     async updateBotStatus() {

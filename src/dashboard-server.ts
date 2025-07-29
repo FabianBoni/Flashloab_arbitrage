@@ -77,6 +77,15 @@ class ArbitrageDashboardServer {
     try {
       const { account } = req.body;
 
+      // Check if there's already a running bot instance
+      const runningBot = FlashloanArbitrageBot.getInstance();
+      if (runningBot && runningBot.getIsRunning()) {
+        return res.status(400).json({
+          success: false,
+          error: 'Bot is already running from main process'
+        });
+      }
+
       if (this.botInstance?.isRunning) {
         return res.status(400).json({
           success: false,
@@ -124,6 +133,15 @@ class ArbitrageDashboardServer {
 
   private async handleBotStop(req: express.Request, res: express.Response) {
     try {
+      // Check if there's a running bot instance from main process
+      const runningBot = FlashloanArbitrageBot.getInstance();
+      if (runningBot && runningBot.getIsRunning()) {
+        return res.status(400).json({
+          success: false,
+          error: 'Cannot stop bot started from main process. Use terminal to stop the bot.'
+        });
+      }
+
       if (!this.botInstance?.isRunning) {
         return res.status(400).json({
           success: false,
@@ -153,20 +171,33 @@ class ArbitrageDashboardServer {
 
   private handleGetStatus(req: express.Request, res: express.Response) {
     try {
-      const status = {
-        running: this.botInstance?.isRunning || false,
-        account: this.botInstance?.connectedAccount || null,
-        uptime: this.botInstance ? Date.now() - this.botInstance.stats.startTime : 0,
-        stats: this.botInstance?.stats || {
-          opportunitiesFound: 0,
-          tradesExecuted: 0,
-          successfulTrades: 0,
-          totalProfit: 0,
-          startTime: 0
-        }
-      };
-
-      res.json(status);
+      // Try to get the running bot instance
+      const runningBot = FlashloanArbitrageBot.getInstance();
+      
+      if (runningBot && runningBot.getIsRunning()) {
+        const botStats = runningBot.getStats();
+        const status = {
+          running: true,
+          account: this.botInstance?.connectedAccount || null,
+          uptime: botStats.uptime,
+          stats: botStats
+        };
+        res.json(status);
+      } else {
+        const status = {
+          running: this.botInstance?.isRunning || false,
+          account: this.botInstance?.connectedAccount || null,
+          uptime: this.botInstance ? Date.now() - this.botInstance.stats.startTime : 0,
+          stats: this.botInstance?.stats || {
+            opportunitiesFound: 0,
+            tradesExecuted: 0,
+            successfulTrades: 0,
+            totalProfit: 0,
+            startTime: 0
+          }
+        };
+        res.json(status);
+      }
     } catch (error: any) {
       console.error('Error getting bot status:', error);
       res.status(500).json({
@@ -178,7 +209,15 @@ class ArbitrageDashboardServer {
 
   private handleGetOpportunities(req: express.Request, res: express.Response) {
     try {
-      const opportunities = this.botInstance?.currentOpportunities || [];
+      // Try to get opportunities from the running bot instance
+      const runningBot = FlashloanArbitrageBot.getInstance();
+      let opportunities: any[] = [];
+      
+      if (runningBot && runningBot.getIsRunning()) {
+        opportunities = runningBot.getCurrentOpportunities();
+      } else {
+        opportunities = this.botInstance?.currentOpportunities || [];
+      }
       
       // Calculate profit after fees for each opportunity
       const enrichedOpportunities = opportunities.map(opp => {
