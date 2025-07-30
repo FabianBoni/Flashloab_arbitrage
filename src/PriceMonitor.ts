@@ -130,9 +130,30 @@ export class PriceMonitor {
       const outputAmount = amounts[amounts.length - 1];
       
       // Sanity check: output amount should be reasonable compared to input
-      const priceRatio = Number(outputAmount * BigInt(1000)) / Number(amountIn);
-      if (priceRatio > 10000 || priceRatio < 0.0001) { // More than 10000x or less than 0.0001x
-        console.log(`🚫 Rejecting unrealistic price from ${dexName}: ratio ${priceRatio}`);
+      const priceRatio = Number(outputAmount) / Number(amountIn);
+      
+      // Dynamic ratio validation based on token pair types
+      let maxRatio = 10000;
+      let minRatio = 0.0001;
+      
+      // For stablecoin to stablecoin pairs, expect closer to 1:1
+      if (this.isStablecoin(path[0]) && this.isStablecoin(path[1])) {
+        maxRatio = 2.0;   // Max 2:1 ratio for stablecoin pairs
+        minRatio = 0.5;   // Min 0.5:1 ratio for stablecoin pairs
+      }
+      // For stablecoin to volatile token (like BUSD to ETH)
+      else if (this.isStablecoin(path[0]) || this.isStablecoin(path[1])) {
+        maxRatio = 5000;  // Allow higher ratios for stablecoin/volatile pairs
+        minRatio = 0.00005; // Lower threshold for stablecoin to expensive tokens like ETH
+      }
+      
+      if (priceRatio > maxRatio || priceRatio < minRatio) {
+        console.log(`🚫 Rejecting unrealistic price from ${dexName}: ratio ${priceRatio.toFixed(6)}`);
+        console.log(`   Input: ${ethers.formatEther(amountIn)} tokens`);
+        console.log(`   Output: ${ethers.formatEther(outputAmount)} tokens`);
+        console.log(`   Path: ${path.join(' -> ')}`);
+        console.log(`   Token pair type: ${this.isStablecoin(path[0]) ? 'Stablecoin' : 'Volatile'} -> ${this.isStablecoin(path[1]) ? 'Stablecoin' : 'Volatile'}`);
+        console.log(`   Expected range: ${minRatio.toFixed(6)} - ${maxRatio}`);
         return BigInt(0);
       }
       
@@ -153,6 +174,23 @@ export class PriceMonitor {
            errorString.includes('rate limit') ||
            errorString.includes('too many requests') ||
            errorString.includes('429');
+  }
+
+  /**
+   * Check if a token address is a stablecoin
+   */
+  private isStablecoin(tokenAddress: string): boolean {
+    const stablecoins = [
+      '0x55d398326f99059fF775485246999027B3197955'.toLowerCase(), // USDT BSC
+      '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56'.toLowerCase(), // BUSD BSC
+      '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d'.toLowerCase(), // USDC BSC
+      '0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3'.toLowerCase(), // DAI BSC
+      '0x250632378E573c6Be1AC2f97Fcdf00515d0Aa91B'.toLowerCase(), // BETH BSC (Beacon ETH, relatively stable)
+      '0xdAC17F958D2ee523a2206206994597C13D831ec7'.toLowerCase(), // USDT ETH
+      '0xA0b86a33E6417efF4e8edC958E5577E6a5C8a06c'.toLowerCase(), // USDC ETH
+      '0x6B175474E89094C44Da98b954EedeAC495271d0F'.toLowerCase(), // DAI ETH
+    ];
+    return stablecoins.includes(tokenAddress.toLowerCase());
   }
 
   /**
@@ -393,19 +431,53 @@ export class PriceMonitor {
     try {
       const allOpportunities: ArbitrageOpportunity[] = [];
 
-      // FOCUS ON ONLY THE MOST LIQUID TOKENS for realistic opportunities
+      // EXPANDED TO 30+ MOST LIQUID AND VOLATILE TOKENS for maximum arbitrage opportunities
       const liquidTokens = [
-        // BSC - Major tokens only
+        // BSC - Core native tokens (highest liquidity)
         { address: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', symbol: 'WBNB', chainId: 56 },
-        { address: '0x55d398326f99059fF775485246999027B3197955', symbol: 'USDT', chainId: 56 },
-        { address: '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56', symbol: 'BUSD', chainId: 56 },
-        { address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', symbol: 'USDC', chainId: 56 },
-        { address: '0x2170Ed0880ac9A755fd29B2688956BD959F933F8', symbol: 'ETH', chainId: 56 },
         
-        // Ethereum - Major tokens only  
-        { address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', symbol: 'WETH', chainId: 1 },
-        { address: '0xdAC17F958D2ee523a2206206994597C13D831ec7', symbol: 'USDT', chainId: 1 },
-        { address: '0xA0b86a33E6417efF4e8edC958E5577E6a5C8a06c', symbol: 'USDC', chainId: 1 },
+        // Major stablecoins (essential for arbitrage)
+        { address: '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56', symbol: 'BUSD', chainId: 56 }, // BUSD 
+        { address: '0x55d398326f99059fF775485246999027B3197955', symbol: 'USDT', chainId: 56 }, // USDT - highest liquidity stablecoin
+        { address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', symbol: 'USDC', chainId: 56 }, // USDC - major stablecoin
+        { address: '0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3', symbol: 'DAI', chainId: 56 },  // DAI stablecoin
+        
+        // Major crypto assets (high volatility + liquidity)
+        { address: '0x2170Ed0880ac9A755fd29B2688956BD959F933F8', symbol: 'ETH', chainId: 56 },  // ETH - very popular
+        { address: '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c', symbol: 'BTCB', chainId: 56 }, // Bitcoin BEP20
+        { address: '0x1D2F0da169ceB9fC7B3144628dB156f3F6c60dBE', symbol: 'XRP', chainId: 56 },  // XRP BEP20
+        { address: '0x3EE2200Efb3400fAbB9AacF31297cBdD1d435D47', symbol: 'ADA', chainId: 56 },  // Cardano BEP20
+        { address: '0x8fF795a6F4D97E7887C79beA79aba5cc76444aDf', symbol: 'BCH', chainId: 56 },  // Bitcoin Cash
+        { address: '0x4338665CBB7B2485A8855A139b75D5e34AB0DB94', symbol: 'LTC', chainId: 56 },  // Litecoin
+        { address: '0x7083609fCE4d1d8Dc0C979AAb8c869Ea2C873402', symbol: 'DOT', chainId: 56 },  // Polkadot
+        { address: '0x1CE0c2827e2eF14D5C4f29a091d735A204794041', symbol: 'AVAX', chainId: 56 }, // Avalanche
+        { address: '0x570A5D26f7765Ecb712C0924E4De545B89fD43dF', symbol: 'SOL', chainId: 56 },  // Solana BEP20
+        { address: '0x0D8Ce2A99Bb6e3B7Db580eD848240e4a0F9aE153', symbol: 'FIL', chainId: 56 },  // Filecoin
+        
+        // BSC Native/DeFi tokens (high activity)
+        { address: '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', symbol: 'CAKE', chainId: 56 }, // PancakeSwap native
+        { address: '0xa2B726B1145A4773F68593CF171187d8EBe4d495', symbol: 'INJ', chainId: 56 },  // Injective
+        { address: '0x85EAC5Ac2F758618dFa09bDbe0cf174e7d574D5B', symbol: 'TRX', chainId: 56 },  // TRON
+        { address: '0xBf5140A22578168FD562DCcF235E5D43A02ce9B1', symbol: 'UNI', chainId: 56 },  // Uniswap
+        { address: '0x63870A18B6e42b01Ef1Ad8A2302ef50B7132054F', symbol: 'BLZ', chainId: 56 },  // Bluzelle
+        
+        // High volatility meme/trending tokens (arbitrage opportunities)
+        { address: '0xfb6115445Bff7b52FeB98650C87f44907E58f802', symbol: 'AAVE', chainId: 56 }, // AAVE
+        { address: '0x101d82428437127bF1608F699CD651e6Abf9766E', symbol: 'BAT', chainId: 56 },  // Basic Attention Token
+        { address: '0x250632378E573c6Be1AC2f97Fcdf00515d0Aa91B', symbol: 'BETH', chainId: 56 }, // Beacon ETH
+        { address: '0x603c7f932ED1fc6575303D8Fb018fDCBb0f39a95', symbol: 'BANANA', chainId: 56 }, // ApeSwap
+        { address: '0x88f1A5ae2A3BF98AEAF342D26B30a79438c9142e', symbol: 'YFI', chainId: 56 },  // yearn.finance
+        
+        // Gaming/Metaverse tokens (volatile)
+        { address: '0x12BB890508c125661E03b09EC06E404bc9289040', symbol: 'RACA', chainId: 56 }, // Radio Caca
+        { address: '0x947950BcC74888a40Ffa2593C5798F11Fc9124C4', symbol: 'SUSHI', chainId: 56 }, // SushiSwap
+        { address: '0x965F527D9159dCe6288a2219DB51fc6Eef120dD1', symbol: 'BSW', chainId: 56 },  // Biswap
+        { address: '0x1f546aD641B56b86fD9dCEAc473d1C7a357276B7', symbol: 'ALPACA', chainId: 56 }, // Alpaca Finance
+        { address: '0x0E37d70B51f36b35b29Acc9C25364cF8A564a2A7', symbol: 'AUTO', chainId: 56 }, // Auto
+        
+        // Additional volatile tokens for maximum coverage
+        { address: '0x4B0F1812e5Df2A09796481Ff14017e6005508003', symbol: 'TWT', chainId: 56 },  // Trust Wallet Token
+        { address: '0x16939ef78684453bfDFb47825F8a5F714f12623a', symbol: 'XTZ', chainId: 56 },  // Tezos
       ];
 
       console.log('🔍 Monitoring MAJOR, LIQUID tokens for realistic arbitrage opportunities...');
@@ -427,6 +499,8 @@ export class PriceMonitor {
         for (const otherToken of otherTokens) {
           // Use realistic trade sizes for flashloan arbitrage
           const tradeSize = ethers.parseEther('1.0'); // 1 token - realistic for execution
+          
+          console.log(`🔍 Checking ${token.symbol}/${otherToken.symbol} (${token.address} -> ${otherToken.address})`);
           
           const opportunities = await this.findArbitrageOpportunities(
             token.chainId,
