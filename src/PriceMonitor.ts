@@ -132,19 +132,19 @@ export class PriceMonitor {
       // Sanity check: output amount should be reasonable compared to input
       const priceRatio = Number(outputAmount) / Number(amountIn);
       
-      // Dynamic ratio validation - mehr tolerant für DeFi tokens
-      let maxRatio = 50000;   // Erhöht für DeFi tokens
-      let minRatio = 0.00002;  // Reduziert für sehr kleine tokens
+      // Dynamic ratio validation - angepasst für Bitcoin (BTCB)
+      let maxRatio = 50000;   
+      let minRatio = 0.000001; // Sehr niedrig für BTCB (Bitcoin ist ~$100k)
       
       // For stablecoin to stablecoin pairs, expect closer to 1:1
       if (this.isStablecoin(path[0]) && this.isStablecoin(path[1])) {
         maxRatio = 2.0;   // Max 2:1 ratio for stablecoin pairs
         minRatio = 0.5;   // Min 0.5:1 ratio for stablecoin pairs
       }
-      // For stablecoin to volatile token (like BUSD to ETH)
+      // For stablecoin to volatile token (like BUSD to ETH/BTCB)
       else if (this.isStablecoin(path[0]) || this.isStablecoin(path[1])) {
         maxRatio = 10000;  // Allow higher ratios for stablecoin/volatile pairs
-        minRatio = 0.00005; // Lower threshold for stablecoin to expensive tokens like ETH
+        minRatio = 0.000001; // Sehr niedrig für teure Assets wie BTCB
       }
       
       if (priceRatio > maxRatio || priceRatio < minRatio) {
@@ -184,8 +184,7 @@ export class PriceMonitor {
       '0x55d398326f99059fF775485246999027B3197955'.toLowerCase(), // USDT BSC
       '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56'.toLowerCase(), // BUSD BSC
       '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d'.toLowerCase(), // USDC BSC
-      '0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3'.toLowerCase(), // DAI BSC
-      '0x250632378E573c6Be1AC2f97Fcdf00515d0Aa91B'.toLowerCase(), // BETH BSC (Beacon ETH, relatively stable)
+      // DAI removed due to liquidity issues
       '0xdAC17F958D2ee523a2206206994597C13D831ec7'.toLowerCase(), // USDT ETH
       '0xA0b86a33E6417efF4e8edC958E5577E6a5C8a06c'.toLowerCase(), // USDC ETH
       '0x6B175474E89094C44Da98b954EedeAC495271d0F'.toLowerCase(), // DAI ETH
@@ -431,32 +430,27 @@ export class PriceMonitor {
     try {
       const allOpportunities: ArbitrageOpportunity[] = [];
 
-      // VERIFIED LIQUID TOKENS ONLY - mit korrekten Adressen und hoher Liquidität
+      // TOP 10 MOST LIQUID TOKENS ONLY - Absolut bewährte Adressen mit höchster Liquidität
       const liquidTokens = [
-        // BSC Core Assets (höchste Liquidität)
+        // Core BSC Assets (garantiert hohe Liquidität)
         { address: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', symbol: 'WBNB', chainId: 56 },
         
-        // Stablecoins (essentiell für Arbitrage)
+        // Top Stablecoins (essentiell für Arbitrage)
         { address: '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56', symbol: 'BUSD', chainId: 56 },
         { address: '0x55d398326f99059fF775485246999027B3197955', symbol: 'USDT', chainId: 56 },
         { address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', symbol: 'USDC', chainId: 56 },
-        { address: '0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3', symbol: 'DAI', chainId: 56 },
         
-        // Major Crypto Assets (verifiziert auf BSC)
+        // Top Crypto Assets (höchste Liquidität auf BSC)
         { address: '0x2170Ed0880ac9A755fd29B2688956BD959F933F8', symbol: 'ETH', chainId: 56 },
         { address: '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c', symbol: 'BTCB', chainId: 56 },
-        { address: '0x1D2F0da169ceB9fC7B3144628dB156f3F6c60dBE', symbol: 'XRP', chainId: 56 },
-        { address: '0x3EE2200Efb3400fAbB9AacF31297cBdD1d435D47', symbol: 'ADA', chainId: 56 },
         
-        // BSC DeFi Tokens (hohe Liquidität bestätigt)
+        // BSC Native DeFi (garantiert liquide)
         { address: '0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82', symbol: 'CAKE', chainId: 56 }, // PancakeSwap
-        { address: '0x603c7f932ED1fc6575303D8Fb018fDCBb0f39a95', symbol: 'BANANA', chainId: 56 }, // ApeSwap (korrekte Adresse)
-        { address: '0x965F527D9159dCe6288a2219DB51fc6Eef120dD1', symbol: 'BSW', chainId: 56 },  // Biswap
         { address: '0x4B0F1812e5Df2A09796481Ff14017e6005508003', symbol: 'TWT', chainId: 56 },  // Trust Wallet
         
-        // Additional verified tokens
-        { address: '0xBf5140A22578168FD562DCcF235E5D43A02ce9B1', symbol: 'UNI', chainId: 56 },  // Uniswap
-        { address: '0x85EAC5Ac2F758618dFa09bDbe0cf174e7d574D5B', symbol: 'TRX', chainId: 56 },  // TRON
+        // Additional verified high-liquidity tokens
+        { address: '0x3EE2200Efb3400fAbB9AacF31297cBdD1d435D47', symbol: 'ADA', chainId: 56 },  // Cardano
+        { address: '0x1D2F0da169ceB9fC7B3144628dB156f3F6c60dBE', symbol: 'XRP', chainId: 56 },  // XRP
       ];
 
       console.log('🔍 Monitoring MAJOR, LIQUID tokens for realistic arbitrage opportunities...');
