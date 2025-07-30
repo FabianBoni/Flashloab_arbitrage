@@ -1,8 +1,9 @@
 import 'dotenv/config';
 import { PriceMonitor } from './PriceMonitor';
 import { ArbitrageExecutor } from './ArbitrageExecutor';
-import { SUPPORTED_CHAINS, POPULAR_TOKENS, MIN_PROFIT_THRESHOLD, OPPORTUNITY_CHECK_INTERVAL } from './config';
+import { SUPPORTED_CHAINS, POPULAR_TOKENS, MIN_PROFIT_THRESHOLD, OPPORTUNITY_CHECK_INTERVAL, getTestModeChains } from './config';
 import { ArbitrageOpportunity } from './types';
+import { logger } from './logger';
 
 interface BotStats {
   opportunitiesFound: number;
@@ -33,12 +34,21 @@ export class FlashloanArbitrageBot {
 
     // Check for demo mode
     const demoMode = process.env.DEMO_MODE === 'true';
+    const testMode = process.env.TEST_MODE === 'true';
+    
     if (demoMode) {
       console.log('🎭 Running in DEMO MODE with mock data');
     }
+    
+    if (testMode) {
+      console.log('🧪 Running in TEST MODE with limited DEXs');
+    }
+
+    // Get appropriate chain configuration
+    const chainConfig = testMode ? getTestModeChains() : SUPPORTED_CHAINS;
 
     // Initialize price monitor
-    this.priceMonitor = new PriceMonitor(SUPPORTED_CHAINS, demoMode);
+    this.priceMonitor = new PriceMonitor(chainConfig, demoMode);
 
     // Initialize executor with contract addresses
     const contractAddresses = new Map<number, string>();
@@ -69,11 +79,11 @@ export class FlashloanArbitrageBot {
    * Start the arbitrage bot
    */
   async start(): Promise<void> {
-    console.log('🤖 Starting Flashloan Arbitrage Bot...');
-    console.log('📊 Monitoring configuration:');
-    console.log(`   - Minimum profit threshold: ${MIN_PROFIT_THRESHOLD * 100}%`);
-    console.log(`   - Check interval: ${OPPORTUNITY_CHECK_INTERVAL}ms`);
-    console.log(`   - Supported chains: ${SUPPORTED_CHAINS.length}`);
+    logger.info('🤖 Starting Flashloan Arbitrage Bot...');
+    logger.info('📊 Monitoring configuration:');
+    logger.info(`   - Minimum profit threshold: ${MIN_PROFIT_THRESHOLD * 100}%`);
+    logger.info(`   - Check interval: ${OPPORTUNITY_CHECK_INTERVAL}ms`);
+    logger.info(`   - Supported chains: ${SUPPORTED_CHAINS.length}`);
 
     this.isRunning = true;
 
@@ -90,14 +100,14 @@ export class FlashloanArbitrageBot {
     // Start stats reporting
     this.startStatsReporting();
 
-    console.log('✅ Bot started successfully!');
+    logger.success('✅ Bot started successfully!');
   }
 
   /**
    * Stop the arbitrage bot
    */
   stop(): void {
-    console.log('🛑 Stopping Flashloan Arbitrage Bot...');
+    logger.info('🛑 Stopping Flashloan Arbitrage Bot...');
     this.isRunning = false;
   }
 
@@ -108,6 +118,7 @@ export class FlashloanArbitrageBot {
     // Store current opportunities for dashboard
     this.currentOpportunities = opportunities;
     
+    // Count ALL opportunities found
     this.stats.opportunitiesFound += opportunities.length;
 
     // Filter opportunities by profitability threshold
@@ -115,29 +126,36 @@ export class FlashloanArbitrageBot {
       op => op.profitPercent >= MIN_PROFIT_THRESHOLD * 100
     );
 
-    if (profitableOpportunities.length === 0) {
-      return;
+    // Log opportunity discovery (throttled)
+    if (profitableOpportunities.length > 0) {
+      logger.opportunity(`Found ${profitableOpportunities.length} profitable opportunities (${opportunities.length} total)`);
     }
 
-    console.log(`💡 Found ${profitableOpportunities.length} potentially profitable opportunities`);
+    if (profitableOpportunities.length === 0) {
+      return; // Skip logging if no opportunities
+    }
 
     // PRE-VALIDATE with smart contract before execution
-    console.log(`🔍 Pre-validating opportunities with smart contract...`);
     const validatedOpportunities: ArbitrageOpportunity[] = [];
     
     for (const opportunity of profitableOpportunities) {
       const isValid = await this.executor.preValidateOpportunity(opportunity);
       if (isValid) {
         validatedOpportunities.push(opportunity);
+        logger.success(`Opportunity validated: ${opportunity.profitPercent.toFixed(2)}% profit`);
+      } else {
+        logger.warning(`Contract pre-validation FAILED for ${opportunity.profitPercent.toFixed(2)}% opportunity`);
+        logger.warning(`   Route: ${opportunity.dexA} -> ${opportunity.dexB}`);
+        logger.warning(`   Reason: Contract says not profitable (likely due to changed market conditions)`);
       }
     }
 
     if (validatedOpportunities.length === 0) {
-      console.log(`⚠️  No opportunities passed contract validation (market conditions changed)`);
+      logger.warning('No opportunities passed contract validation (market conditions changed)');
       return;
     }
 
-    console.log(`✅ ${validatedOpportunities.length} opportunities passed contract validation`);
+    logger.success(`${validatedOpportunities.length} opportunities passed contract validation`);
 
     // Sort by profitability (highest first)
     validatedOpportunities.sort((a, b) => b.profitPercent - a.profitPercent);
@@ -155,7 +173,10 @@ export class FlashloanArbitrageBot {
    */
   private async executeOpportunity(opportunity: ArbitrageOpportunity): Promise<void> {
     try {
-      console.log(`🎯 Executing opportunity: ${opportunity.profitPercent.toFixed(2)}% profit`);
+      logger.trade(`Executing opportunity: ${opportunity.profitPercent.toFixed(2)}% profit`);
+      logger.trade(`Route: ${opportunity.dexA} -> ${opportunity.dexB}`);
+      logger.trade(`Token: ${opportunity.tokenA} -> ${opportunity.tokenB}`);
+      logger.trade(`Amount: ${opportunity.amountIn}`);
       
       this.stats.tradesExecuted++;
 
@@ -166,13 +187,13 @@ export class FlashloanArbitrageBot {
         const profit = parseFloat(result.profit || '0');
         this.stats.totalProfit += profit;
 
-        console.log(`✅ Trade successful! Profit: ${profit} ETH`);
-        console.log(`📄 Transaction: ${result.txHash}`);
+        logger.success(`Trade successful! Profit: ${profit} ETH`);
+        logger.success(`Transaction: ${result.txHash}`);
       } else {
-        console.log(`❌ Trade failed: ${result.error}`);
+        logger.error(`Trade failed: ${result.error}`);
       }
     } catch (error) {
-      console.error('Error executing opportunity:', error);
+      logger.error('Error executing opportunity:', error);
     }
   }
 
@@ -219,13 +240,15 @@ export class FlashloanArbitrageBot {
       ? (this.stats.successfulTrades / this.stats.tradesExecuted * 100).toFixed(1)
       : '0';
 
-    console.log('\n📊 Bot Statistics:');
-    console.log(`   ⏱️  Uptime: ${uptime} minutes`);
-    console.log(`   🔍 Opportunities found: ${this.stats.opportunitiesFound}`);
-    console.log(`   📈 Trades executed: ${this.stats.tradesExecuted}`);
-    console.log(`   ✅ Success rate: ${successRate}%`);
-    console.log(`   💰 Total profit: ${this.stats.totalProfit.toFixed(4)} ETH`);
-    console.log('');
+    const statsMessage = `
+📊 Bot Statistics:
+   ⏱️  Uptime: ${uptime} minutes
+   🔍 Opportunities found: ${this.stats.opportunitiesFound}
+   📈 Trades executed: ${this.stats.tradesExecuted}
+   ✅ Success rate: ${successRate}%
+   💰 Total profit: ${this.stats.totalProfit.toFixed(4)} ETH`;
+
+    logger.stats(statsMessage);
   }
 
   /**
@@ -260,20 +283,20 @@ async function main() {
     
     // Handle graceful shutdown
     process.on('SIGINT', () => {
-      console.log('\n👋 Received SIGINT, shutting down gracefully...');
+      logger.info('\n👋 Received SIGINT, shutting down gracefully...');
       bot.stop();
       process.exit(0);
     });
 
     process.on('SIGTERM', () => {
-      console.log('\n👋 Received SIGTERM, shutting down gracefully...');
+      logger.info('\n👋 Received SIGTERM, shutting down gracefully...');
       bot.stop();
       process.exit(0);
     });
 
     await bot.start();
   } catch (error) {
-    console.error('💥 Failed to start bot:', error);
+    logger.error('💥 Failed to start bot:', error);
     process.exit(1);
   }
 }

@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import { DEXConfig, ArbitrageOpportunity } from './types';
+import { RateLimiter } from './RateLimiter.js';
 
 const UNISWAP_V2_ROUTER_ABI = [
   'function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts)',
@@ -18,9 +19,11 @@ export class PriceMonitor {
   private providers: Map<number, ethers.JsonRpcProvider> = new Map();
   private routers: Map<string, ethers.Contract> = new Map();
   private demoMode: boolean;
+  private rateLimiter: RateLimiter;
 
   constructor(chainConfigs: Array<{ chainId: number; rpcUrl: string; dexes: DEXConfig[] }>, demoMode = false) {
     this.demoMode = demoMode;
+    this.rateLimiter = RateLimiter.getInstance();
     
     if (!demoMode) {
       // Initialize providers and router contracts only in live mode
@@ -65,7 +68,16 @@ export class PriceMonitor {
       }
 
       const path = [tokenA, tokenB];
-      const amounts = await router.getAmountsOut(amountIn, path);
+      
+      // Use rate limiter for the RPC call
+      const amounts = await this.rateLimiter.executeWithRateLimit(
+        () => router.getAmountsOut(amountIn, path),
+        `${dexName}-${chainId}-getAmountsOut`
+      );
+      
+      if (!amounts) {
+        return BigInt(0);
+      }
       
       return amounts[amounts.length - 1];
     } catch (error) {

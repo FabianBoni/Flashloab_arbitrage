@@ -69,8 +69,8 @@ contract FlashloanArbitrage is ReentrancyGuard, Ownable {
 
     mapping(string => DEXConfig) public dexConfigs;
     
-    // Minimum profit threshold (in wei)
-    uint256 public minProfitThreshold = 0.01 ether;
+    // Minimum profit threshold (in wei) - REDUCED to 0.001 ETH (~$2-3)
+    uint256 public minProfitThreshold = 0.001 ether;
     
     // Maximum slippage tolerance (basis points, 50 = 0.5%)
     uint256 public maxSlippage = 50;
