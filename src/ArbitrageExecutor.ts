@@ -63,12 +63,51 @@ export class ArbitrageExecutor {
         throw new Error(`⚠️  Contract not deployed for chain ${chainId}. Please deploy the flashloan arbitrage contract to this chain first, or set DEMO_MODE=true to test with mock data.`);
       }
 
-      // Verify the opportunity is still profitable
-      const isProfitable = await this.verifyProfitability(opportunity, chainId);
-      if (!isProfitable) {
+      // CRITICAL: Use contract's own profitability check before execution
+      console.log('🔍 VALIDATING OPPORTUNITY WITH CONTRACT...');
+      
+      try {
+        const contractProfit = await contract.calculateArbitrageProfit(
+          BigInt(opportunity.amountIn),
+          opportunity.dexA,
+          opportunity.dexB,
+          opportunity.path
+        );
+        
+        const contractProfitEth = ethers.formatEther(contractProfit);
+        console.log(`📊 Contract calculated profit: ${contractProfitEth} ETH`);
+        console.log(`📊 Bot calculated profit: ${opportunity.profitPercent.toFixed(2)}%`);
+        
+        if (contractProfit === 0n) {
+          console.log('❌ Contract shows 0 profit - opportunity no longer valid');
+          return {
+            success: false,
+            error: 'Contract validation failed: 0 profit calculated',
+          };
+        }
+        
+        const isProfitable = await contract.isArbitrageProfitable(
+          BigInt(opportunity.amountIn),
+          opportunity.dexA,
+          opportunity.dexB,
+          opportunity.path
+        );
+        
+        if (!isProfitable) {
+          console.log('❌ Contract profitability check failed');
+          return {
+            success: false,
+            error: 'Contract profitability check failed',
+          };
+        }
+        
+        console.log('✅ CONTRACT VALIDATION PASSED - PROCEEDING WITH EXECUTION');
+        
+      } catch (validationError) {
+        console.log('❌ Contract validation error:', validationError);
         return {
           success: false,
-          error: 'Opportunity no longer profitable',
+          error: `Contract validation failed: ${validationError}`,
         };
       }
 
@@ -95,9 +134,9 @@ export class ArbitrageExecutor {
         minProfit,
         {
           gasLimit: 1500000, // Higher gas limit for complex operations
-          gasPrice: ethers.parseUnits('12', 'gwei'), // Competitive gas price
-          maxFeePerGas: ethers.parseUnits('15', 'gwei'), // Priority fee
-          maxPriorityFeePerGas: ethers.parseUnits('2', 'gwei') // Tip for miners
+          maxFeePerGas: ethers.parseUnits('15', 'gwei'), // EIP-1559 max fee
+          maxPriorityFeePerGas: ethers.parseUnits('2', 'gwei') // EIP-1559 priority fee
+          // Note: Removed gasPrice to avoid conflict with EIP-1559 fields
         }
       );
       
@@ -138,43 +177,28 @@ export class ArbitrageExecutor {
    */
   private async verifyProfitability(opportunity: ArbitrageOpportunity, chainId: number): Promise<boolean> {
     try {
-      const contract = this.contracts.get(chainId);
-      if (!contract) {
-        console.log('⚠️  No contract available, using simple threshold check');
-        return opportunity.profitPercent > 2.0;
-      }
-
-      console.log(`💡 Checking on-chain profitability for ${opportunity.profitPercent.toFixed(2)}% opportunity`);
+      // AGGRESSIVE MODE: Skip contract pre-validation für schnellere Execution
+      console.log(`� AGGRESSIVE EXECUTION MODE: Skipping contract pre-validation für ${opportunity.profitPercent.toFixed(2)}% opportunity`);
+      console.log(`   Reason: Direct execution is faster than validation-then-execution`);
       
-      // Use smart contract to verify profitability
-      const isProfitable = await contract.isArbitrageProfitable(
-        BigInt(opportunity.amountIn),
-        opportunity.dexA,
-        opportunity.dexB,
-        opportunity.path
-      );
-      
-      if (isProfitable) {
-        // Get exact profit amount
-        const profitAmount = await contract.calculateArbitrageProfit(
-          BigInt(opportunity.amountIn),
-          opportunity.dexA,
-          opportunity.dexB,
-          opportunity.path
-        );
-        
-        const profitEth = ethers.formatEther(profitAmount);
-        console.log(`✅ Contract confirms profitability: ${profitEth} ETH profit`);
-        return true;
-      } else {
-        console.log('⚠️  Contract indicates opportunity no longer profitable');
+      // Simple checks that are much faster
+      if (opportunity.profitPercent < 0.2) {
+        console.log('⚠️  Profit too low even for aggressive mode (<0.2%)');
         return false;
       }
+      
+      if (opportunity.profitPercent > 50) {
+        console.log('⚠️  Profit too high, likely calculation error (>50%)');
+        return false;
+      }
+      
+      console.log(`✅ FAST CHECK PASSED: Proceeding with direct execution of ${opportunity.profitPercent.toFixed(2)}% opportunity`);
+      return true;
+      
     } catch (error) {
-      console.error('Error verifying profitability:', error);
-      // Fallback to AGGRESSIVE check - accept smaller profits
-      console.log('📊 Using fallback profitability check - AGGRESSIVE MODE');
-      return opportunity.profitPercent > 0.5; // Accept 0.5% or higher
+      console.error('Error in fast profitability check:', error);
+      // Even more aggressive fallback
+      return opportunity.profitPercent > 0.3;
     }
   }
 

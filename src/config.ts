@@ -88,6 +88,7 @@ export const POPULAR_TOKENS = {
 };
 
 export const MIN_PROFIT_THRESHOLD = parseFloat(process.env.MIN_PROFIT_THRESHOLD || '0.01');
+export const MAX_PROFIT_THRESHOLD = parseFloat(process.env.MAX_PROFIT_THRESHOLD || '1000');
 export const MAX_GAS_PRICE = parseFloat(process.env.MAX_GAS_PRICE || '50');
 export const SLIPPAGE_TOLERANCE = parseFloat(process.env.SLIPPAGE_TOLERANCE || '0.005');
 export const PRICE_UPDATE_INTERVAL = parseInt(process.env.PRICE_UPDATE_INTERVAL || '5000');

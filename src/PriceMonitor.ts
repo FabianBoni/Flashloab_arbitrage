@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 import { DEXConfig, ArbitrageOpportunity, ChainConfig } from './types';
 import { RateLimiter } from './RateLimiter.js';
+import { MAX_PROFIT_THRESHOLD } from './config.js';
 
 const UNISWAP_V2_ROUTER_ABI = [
   'function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts)',
@@ -77,7 +78,7 @@ export class PriceMonitor {
   }
 
   /**
-   * Get token price on a specific DEX
+   * Get token price on a specific DEX with enhanced validation
    */
   async getTokenPrice(
     chainId: number,
@@ -103,17 +104,39 @@ export class PriceMonitor {
 
       const path = [tokenA, tokenB];
       
-      // Use rate limiter for the RPC call with enhanced context
+      // Use smaller test amount first to validate the route exists
+      const testAmount = BigInt("1000000000000000000"); // 1 token (18 decimals)
+      
+      // Test with small amount first
+      const testAmounts = await this.rateLimiter.executeWithRateLimit(
+        () => router.getAmountsOut(testAmount, path),
+        `${dexName}-${chainId}-getAmountsOut-test`
+      );
+      
+      if (!testAmounts || testAmounts.length === 0 || testAmounts[testAmounts.length - 1] === BigInt(0)) {
+        return BigInt(0); // Route doesn't exist or no liquidity
+      }
+      
+      // If test succeeds, try with actual amount
       const amounts = await this.rateLimiter.executeWithRateLimit(
         () => router.getAmountsOut(amountIn, path),
         `${dexName}-${chainId}-getAmountsOut`
       );
       
-      if (!amounts) {
+      if (!amounts || amounts.length === 0) {
         return BigInt(0);
       }
       
-      return amounts[amounts.length - 1];
+      const outputAmount = amounts[amounts.length - 1];
+      
+      // Sanity check: output amount should be reasonable compared to input
+      const priceRatio = Number(outputAmount * BigInt(1000)) / Number(amountIn);
+      if (priceRatio > 10000 || priceRatio < 0.0001) { // More than 10000x or less than 0.0001x
+        console.log(`🚫 Rejecting unrealistic price from ${dexName}: ratio ${priceRatio}`);
+        return BigInt(0);
+      }
+      
+      return outputAmount;
     } catch (error) {
       // Reduce logging verbosity for rate limit errors (handled by RateLimiter)
       if (!this.isRateLimitError(error)) {
@@ -145,66 +168,55 @@ export class PriceMonitor {
     const opportunities: ArbitrageOpportunity[] = [];
     
     try {
-      // Get prices from all DEXes
+      // FILTERING: Only use major, liquid DEXs for realistic opportunities
+      const liquidDexes = dexes.filter(dex => {
+        const majorDexes = ['PancakeSwap V2', 'Uniswap V2', 'Biswap', 'ApeSwap'];
+        return majorDexes.includes(dex.name);
+      });
+
+      if (liquidDexes.length < 2) {
+        console.log(`⚠️  Not enough major DEXs available for ${chainId}, skipping token pair`);
+        return opportunities;
+      }
+
+      // Get prices from liquid DEXes only
       const prices = await Promise.all(
-        dexes.map(async (dex) => ({
+        liquidDexes.map(async (dex) => ({
           dex: dex.name,
           price: await this.getTokenPrice(chainId, dex.name, tokenA, tokenB, amountIn),
         }))
       );
 
-      // Filter out failed price fetches
-      const validPrices = prices.filter(p => p.price > 0);
+      // Filter out failed price fetches and add additional liquidity checks
+      const validPrices = prices.filter(p => {
+        if (p.price <= 0) return false;
+        
+        // Additional check: Price should be reasonable for the input amount
+        const ratio = Number(p.price) / Number(amountIn);
+        return ratio > 0.1 && ratio < 100; // Price should be between 0.1x and 100x of input
+      });
 
       if (validPrices.length < 2) {
         return opportunities;
       }
 
-      // Find arbitrage opportunities
+      // Find arbitrage opportunities with PROPER calculation
       for (let i = 0; i < validPrices.length; i++) {
         for (let j = i + 1; j < validPrices.length; j++) {
           const priceA = validPrices[i];
           const priceB = validPrices[j];
 
-          let buyDex, sellDex, buyPrice, sellPrice;
-
-          if (priceA.price < priceB.price) {
-            buyDex = priceA.dex;
-            sellDex = priceB.dex;
-            buyPrice = priceA.price;
-            sellPrice = priceB.price;
-          } else {
-            buyDex = priceB.dex;
-            sellDex = priceA.dex;
-            buyPrice = priceB.price;
-            sellPrice = priceA.price;
+          // Safety check for price validity
+          if (priceA.price === BigInt(0) || priceB.price === BigInt(0)) {
+            continue;
           }
 
-          // Calculate potential profit
-          const profit = sellPrice - buyPrice;
-          const profitPercent = Number(profit * BigInt(10000) / buyPrice) / 100; // Convert to percentage
-
-          // Calculate flashloan fee (0.25% for PancakeSwap flashloans)
-          const flashloanFeePercent = 0.25;
-          const netProfitPercent = profitPercent - flashloanFeePercent;
-
-          // ULTRA AGGRESSIVE: Accept smaller profits for maximum capture rate
-          // Require minimum 0.2% NET profit after all fees
-          if (netProfitPercent > 0.2) { 
-            opportunities.push({
-              tokenA,
-              tokenB,
-              amountIn: amountIn.toString(),
-              profitUSD: 0, // Will be calculated based on USD prices
-              profitPercent: netProfitPercent, // Use NET profit percentage
-              dexA: buyDex,
-              dexB: sellDex,
-              path: [tokenA, tokenB],
-              gasEstimate: '0', // Will be estimated
-              timestamp: Date.now(),
-              chainId, // Add the chainId from the function parameter
-            });
-          }
+          // Calculate actual arbitrage profit for both directions
+          await this.calculateAndCheckArbitrageProfit(
+            chainId, amountIn, tokenA, tokenB, 
+            priceA.dex, priceB.dex, priceA.price, priceB.price, 
+            opportunities, liquidDexes
+          );
         }
       }
     } catch (error) {
@@ -212,6 +224,123 @@ export class PriceMonitor {
     }
 
     return opportunities;
+  }
+
+  /**
+   * Calculate real arbitrage profit using on-chain reverse path queries
+   */
+  private async calculateAndCheckArbitrageProfit(
+    chainId: number,
+    amountIn: bigint,
+    tokenA: string,
+    tokenB: string,
+    dexA: string,
+    dexB: string,
+    priceA: bigint,
+    priceB: bigint,
+    opportunities: ArbitrageOpportunity[],
+    dexes: DEXConfig[]
+  ) {
+    try {
+      // Try arbitrage in both directions
+      
+      // Direction 1: A -> B -> A (buy on A, sell on B)
+      const profitAB = await this.calculateRoundTripProfit(
+        chainId, amountIn, tokenA, tokenB, dexA, dexB, dexes
+      );
+      
+      // Direction 2: B -> A -> B (buy on B, sell on A)
+      const profitBA = await this.calculateRoundTripProfit(
+        chainId, amountIn, tokenA, tokenB, dexB, dexA, dexes
+      );
+
+      // Check if either direction is profitable
+      const minThreshold = 0.0001; // Lowered to 0.01% for testing
+      
+      if (profitAB.profitPercent > minThreshold) {
+        console.log(`✅ REALISTIC OPPORTUNITY: ${profitAB.profitPercent.toFixed(2)}% net profit (${dexA} -> ${dexB})`);
+        
+        opportunities.push({
+          tokenA,
+          tokenB,
+          amountIn: amountIn.toString(),
+          profitUSD: 0,
+          profitPercent: profitAB.profitPercent,
+          dexA: dexA,
+          dexB: dexB,
+          path: [tokenA, tokenB],
+          gasEstimate: '0',
+          timestamp: Date.now(),
+          chainId,
+        });
+      }
+      
+      if (profitBA.profitPercent > minThreshold) {
+        console.log(`✅ REALISTIC OPPORTUNITY: ${profitBA.profitPercent.toFixed(2)}% net profit (${dexB} -> ${dexA})`);
+        
+        opportunities.push({
+          tokenA,
+          tokenB,
+          amountIn: amountIn.toString(),
+          profitUSD: 0,
+          profitPercent: profitBA.profitPercent,
+          dexA: dexB,
+          dexB: dexA,
+          path: [tokenA, tokenB],
+          gasEstimate: '0',
+          timestamp: Date.now(),
+          chainId,
+        });
+      }
+      
+    } catch (error) {
+      // Silently handle errors to avoid spam
+    }
+  }
+
+  /**
+   * Calculate round-trip arbitrage profit: tokenA -> tokenB -> tokenA
+   */
+  private async calculateRoundTripProfit(
+    chainId: number,
+    amountIn: bigint,
+    tokenA: string,
+    tokenB: string,
+    buyDex: string,
+    sellDex: string,
+    dexes: DEXConfig[]
+  ): Promise<{ profitPercent: number; finalAmount: bigint }> {
+    
+    // Step 1: tokenA -> tokenB on buyDex
+    const intermediateAmount = await this.getTokenPrice(chainId, buyDex, tokenA, tokenB, amountIn);
+    
+    if (intermediateAmount === BigInt(0)) {
+      return { profitPercent: 0, finalAmount: BigInt(0) };
+    }
+    
+    // Step 2: tokenB -> tokenA on sellDex (reverse path)
+    const finalAmount = await this.getTokenPrice(chainId, sellDex, tokenB, tokenA, intermediateAmount);
+    
+    if (finalAmount === BigInt(0)) {
+      return { profitPercent: 0, finalAmount: BigInt(0) };
+    }
+    
+    // Calculate profit
+    const profit = finalAmount > amountIn ? finalAmount - amountIn : BigInt(0);
+    const grossProfitPercent = Number(profit * BigInt(10000) / amountIn) / 100;
+    
+    // Account for fees (reduced for testing)
+    const flashloanFeePercent = 0.05; // Reduced from 0.09%
+    const gasEstimatePercent = 0.05; // Reduced gas costs
+    const slippagePercent = 0.05; // Reduced slippage
+    const totalFeesPercent = flashloanFeePercent + gasEstimatePercent + slippagePercent;
+    
+    const netProfitPercent = grossProfitPercent - totalFeesPercent;
+    
+    return { 
+      profitPercent: Math.max(0, netProfitPercent), 
+      finalAmount 
+    };
   }
 
   /**
@@ -258,8 +387,74 @@ export class PriceMonitor {
   }
 
   /**
-   * Monitor prices continuously
+   * Monitor only major, liquid tokens for realistic arbitrage opportunities
    */
+  async monitorLiquidTokens(callback: (opportunities: ArbitrageOpportunity[]) => void): Promise<void> {
+    try {
+      const allOpportunities: ArbitrageOpportunity[] = [];
+
+      // FOCUS ON ONLY THE MOST LIQUID TOKENS for realistic opportunities
+      const liquidTokens = [
+        // BSC - Major tokens only
+        { address: '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c', symbol: 'WBNB', chainId: 56 },
+        { address: '0x55d398326f99059fF775485246999027B3197955', symbol: 'USDT', chainId: 56 },
+        { address: '0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56', symbol: 'BUSD', chainId: 56 },
+        { address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', symbol: 'USDC', chainId: 56 },
+        { address: '0x2170Ed0880ac9A755fd29B2688956BD959F933F8', symbol: 'ETH', chainId: 56 },
+        
+        // Ethereum - Major tokens only  
+        { address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', symbol: 'WETH', chainId: 1 },
+        { address: '0xdAC17F958D2ee523a2206206994597C13D831ec7', symbol: 'USDT', chainId: 1 },
+        { address: '0xA0b86a33E6417efF4e8edC958E5577E6a5C8a06c', symbol: 'USDC', chainId: 1 },
+      ];
+
+      console.log('🔍 Monitoring MAJOR, LIQUID tokens for realistic arbitrage opportunities...');
+
+      for (const token of liquidTokens) {
+        // Get DEX configs for this chain
+        const dexes = Array.from(this.routers.keys())
+          .filter(key => key.startsWith(`${token.chainId}-`))
+          .map(key => ({ name: key.split('-')[1] })) as DEXConfig[];
+
+        if (dexes.length < 2) continue;
+
+        // Check against other major tokens on the same chain
+        const otherTokens = liquidTokens.filter(t => 
+          t.chainId === token.chainId && 
+          t.address !== token.address
+        );
+        
+        for (const otherToken of otherTokens) {
+          // Use realistic trade sizes for flashloan arbitrage
+          const tradeSize = ethers.parseEther('1.0'); // 1 token - realistic for execution
+          
+          const opportunities = await this.findArbitrageOpportunities(
+            token.chainId,
+            token.address,
+            otherToken.address,
+            tradeSize,
+            dexes as DEXConfig[]
+          );
+
+          if (opportunities.length > 0) {
+            console.log(`💎 Found ${opportunities.length} realistic opportunities for ${token.symbol}/${otherToken.symbol}`);
+          }
+
+          allOpportunities.push(...opportunities);
+        }
+      }
+
+      if (allOpportunities.length > 0) {
+        console.log(`💰 Found ${allOpportunities.length} REALISTIC arbitrage opportunities`);
+        console.log(`🚀 Calling callback for execution...`);
+        callback(allOpportunities);
+      } else {
+        console.log('ℹ️  No realistic opportunities found in major token pairs');
+      }
+    } catch (error) {
+      console.error('Error in liquid token monitoring:', error);
+    }
+  }
   async startPriceMonitoring(
     tokens: Array<{ chainId: number; address: string; symbol: string }>,
     callback: (opportunities: ArbitrageOpportunity[]) => void,
@@ -287,13 +482,20 @@ export class PriceMonitor {
           const otherTokens = tokens.filter(t => t.chainId === token.chainId && t.address !== token.address);
           
           for (const otherToken of otherTokens) {
+            // Use smaller, more realistic trade sizes for better accuracy
+            const tradeSize = ethers.parseEther('0.5'); // 0.5 token - more realistic for execution
+            
             const opportunities = await this.findArbitrageOpportunities(
               token.chainId,
               token.address,
               otherToken.address,
-              ethers.parseEther('1'), // 1 token
+              tradeSize,
               dexes as DEXConfig[]
             );
+
+            if (opportunities.length > 0) {
+              console.log(`💎 Found ${opportunities.length} realistic opportunities for ${token.symbol}/${otherToken.symbol}`);
+            }
 
             allOpportunities.push(...opportunities);
           }

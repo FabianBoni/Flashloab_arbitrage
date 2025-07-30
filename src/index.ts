@@ -53,7 +53,13 @@ export class FlashloanArbitrageBot {
     // Initialize executor with contract addresses
     const contractAddresses = new Map<number, string>();
     contractAddresses.set(1, '0x5FbDB2315678afecb367f032d93F642f64180aa3'); // Mock address for testing
-    contractAddresses.set(56, '0x0FA4cab40651cfcb308C169fd593E92F2f0cf805'); // REAL PancakeSwap Flashloan Contract on BSC
+    
+    // Use contract address from .env file
+    const deployedContractAddress = process.env.FLASHLOAN_CONTRACT_ADDRESS;
+    if (!deployedContractAddress) {
+      throw new Error('FLASHLOAN_CONTRACT_ADDRESS environment variable is required');
+    }
+    contractAddresses.set(56, deployedContractAddress); // Use .env contract address for BSC
     // contractAddresses.set(137, 'YOUR_POLYGON_CONTRACT_ADDRESS');
     // contractAddresses.set(42161, 'YOUR_ARBITRUM_CONTRACT_ADDRESS');
 
@@ -76,6 +82,29 @@ export class FlashloanArbitrageBot {
   }
 
   /**
+   * Start optimized monitoring for major tokens only
+   */
+  private async startOptimizedMonitoring(): Promise<void> {
+    logger.info('🔍 Starting OPTIMIZED monitoring for major, liquid tokens...');
+    
+    const monitor = async () => {
+      if (!this.isRunning) return;
+      
+      try {
+        await this.priceMonitor.monitorLiquidTokens(this.handleOpportunities.bind(this));
+      } catch (error) {
+        logger.error('Error in optimized monitoring:', error);
+      }
+    };
+
+    // Run initial scan
+    await monitor();
+
+    // Set up interval monitoring
+    setInterval(monitor, OPPORTUNITY_CHECK_INTERVAL);
+  }
+
+  /**
    * Start the arbitrage bot
    */
   async start(): Promise<void> {
@@ -90,12 +119,8 @@ export class FlashloanArbitrageBot {
     // Prepare token list for monitoring
     const tokensToMonitor = this.prepareTokenList();
 
-    // Start price monitoring
-    await this.priceMonitor.startPriceMonitoring(
-      tokensToMonitor,
-      this.handleOpportunities.bind(this),
-      OPPORTUNITY_CHECK_INTERVAL
-    );
+    // Start optimized price monitoring for major tokens only
+    this.startOptimizedMonitoring();
 
     // Start stats reporting
     this.startStatsReporting();
@@ -132,36 +157,19 @@ export class FlashloanArbitrageBot {
     }
 
     if (profitableOpportunities.length === 0) {
-      return; // Skip logging if no opportunities
+      return; // Skip if no opportunities
     }
 
-    // PRE-VALIDATE with smart contract before execution
-    const validatedOpportunities: ArbitrageOpportunity[] = [];
-    
-    for (const opportunity of profitableOpportunities) {
-      const isValid = await this.executor.preValidateOpportunity(opportunity);
-      if (isValid) {
-        validatedOpportunities.push(opportunity);
-        logger.success(`Opportunity validated: ${opportunity.profitPercent.toFixed(2)}% profit`);
-      } else {
-        logger.warning(`Contract pre-validation FAILED for ${opportunity.profitPercent.toFixed(2)}% opportunity`);
-        logger.warning(`   Route: ${opportunity.dexA} -> ${opportunity.dexB}`);
-        logger.warning(`   Reason: Contract says not profitable (likely due to changed market conditions)`);
-      }
-    }
-
-    if (validatedOpportunities.length === 0) {
-      logger.warning('No opportunities passed contract validation (market conditions changed)');
-      return;
-    }
-
-    logger.success(`${validatedOpportunities.length} opportunities passed contract validation`);
+    // AGGRESSIVE MODE: Skip pre-validation, go directly to execution
+    logger.opportunity(`🚀 AGGRESSIVE EXECUTION: Found ${profitableOpportunities.length} opportunities, executing directly!`);
 
     // Sort by profitability (highest first)
-    validatedOpportunities.sort((a, b) => b.profitPercent - a.profitPercent);
+    profitableOpportunities.sort((a, b) => b.profitPercent - a.profitPercent);
 
     // Execute the most profitable opportunities (limit to prevent spam)
-    const toExecute = validatedOpportunities.slice(0, 3);
+    const toExecute = profitableOpportunities.slice(0, 2); // Max 2 parallel executions
+
+    logger.success(`⚡ Attempting direct execution of ${toExecute.length} opportunities`);
 
     for (const opportunity of toExecute) {
       await this.executeOpportunity(opportunity);

@@ -5,8 +5,8 @@ export class RateLimiter {
     private requestQueue: Array<() => Promise<any>> = [];
     private processing = false;
     private readonly maxConcurrent = 1; // Keep at 1 for maximum stability
-    private readonly delayBetweenRequests = 1500; // Increase to 1.5s for better rate limit control
-    private readonly retryDelay = 5000; // Increase retry delay to 5 seconds
+    private readonly delayBetweenRequests = 1200; // Erhöhe auf 1200ms für extreme Ratenbegrenzung
+    private readonly retryDelay = 7000; // Increase retry delay to 7 seconds
     private activeRequests = 0;
     private lastRequestTime = 0;
     private isCircuitBreakerOpen = false;
