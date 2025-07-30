@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
-import { FlashloanArbitrageBot } from './index.js';
+import { FlashloanArbitrageBot } from './index';
 
 interface BotInstance {
   bot: FlashloanArbitrageBot;
@@ -158,7 +158,7 @@ class ArbitrageBotWebServer {
 
       console.log('🛑 Stopping bot...');
 
-      this.botInstance.bot.stop();
+      await this.botInstance.bot.stop();
       this.botInstance.isRunning = false;
 
       console.log('✅ Bot stopped successfully');
@@ -236,20 +236,20 @@ class ArbitrageBotWebServer {
     });
 
     // Handle graceful shutdown
-    process.on('SIGINT', () => {
+    process.on('SIGINT', async () => {
       console.log('\n👋 Shutting down web server...');
       if (this.botInstance && this.botInstance.isRunning) {
         console.log('🛑 Stopping bot...');
-        this.botInstance.bot.stop();
+        await this.botInstance.bot.stop();
       }
       process.exit(0);
     });
 
-    process.on('SIGTERM', () => {
+    process.on('SIGTERM', async () => {
       console.log('\n👋 Received SIGTERM, shutting down gracefully...');
       if (this.botInstance && this.botInstance.isRunning) {
         console.log('🛑 Stopping bot...');
-        this.botInstance.bot.stop();
+        await this.botInstance.bot.stop();
       }
       process.exit(0);
     });

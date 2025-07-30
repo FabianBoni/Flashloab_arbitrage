@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 import { DEXConfig, ArbitrageOpportunity, ChainConfig } from './types';
-import { RateLimiter } from './RateLimiter.js';
-import { MAX_PROFIT_THRESHOLD } from './config.js';
+import { RateLimiter } from './RateLimiter';
+import { MAX_PROFIT_THRESHOLD } from './config';
 
 const UNISWAP_V2_ROUTER_ABI = [
   'function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts)',

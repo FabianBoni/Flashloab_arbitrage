@@ -19,6 +19,13 @@ A comprehensive flashloan arbitrage system that automatically detects and execut
 - **Flashloan-based execution** via Aave V3 for capital efficiency
 - **Risk management** with configurable profit thresholds and slippage protection
 
+### 📱 Telegram Integration
+- **Real-time notifications** for trade executions and opportunities
+- **Bot commands** for status monitoring and control (/status, /stats, /stop)
+- **Automated alerts** for errors and critical events
+- **Periodic statistics reports** delivered directly to your Telegram
+- **Graceful degradation** - works without Telegram configuration
+
 ### � Etherscan V2 Integration
 - **Single API key** for all supported blockchain networks
 - **Contract verification** across 50+ chains with one configuration
@@ -132,6 +139,34 @@ npm run build
    npm start
    ```
 
+### 📱 Telegram Setup (Optional)
+
+To enable Telegram notifications:
+
+1. **Create a Telegram Bot:**
+   - Message [@BotFather](https://t.me/BotFather) on Telegram
+   - Use `/newbot` command and follow instructions
+   - Save the bot token you receive
+
+2. **Get your Chat ID:**
+   - Start a chat with your bot
+   - Send any message to your bot
+   - Visit: `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`
+   - Find your chat ID in the response
+
+3. **Configure Environment:**
+   ```bash
+   # Add to your .env file
+   TELEGRAM_BOT_TOKEN=your_bot_token_here
+   TELEGRAM_CHAT_ID=your_chat_id_here
+   ```
+
+4. **Test the Integration:**
+   ```bash
+   # Test Telegram bot functionality
+   node test-telegram.js
+   ```
+
 ## 🌐 Supported Networks
 
 | Network | Chain ID | DEXes | Flashloan Provider |
@@ -174,6 +209,10 @@ OPPORTUNITY_CHECK_INTERVAL=10000   # Opportunity scan every 10 seconds
 
 # Web Server
 WEB_PORT=3000                      # Web interface port
+
+# 📱 Telegram Bot Configuration (Optional)
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here    # Get from @BotFather
+TELEGRAM_CHAT_ID=your_telegram_chat_id_here        # Your chat/group ID for notifications
 ```
 
 ### 🆕 Etherscan V2 Benefits
@@ -273,6 +312,18 @@ public/
 - **Timestamped entries** with automatic scrolling
 - **Activity filtering** and history management
 
+### 📱 Telegram Features
+- **Real-time notifications** for all bot activities
+- **Trade alerts** with profit/loss details and transaction hashes
+- **Periodic statistics reports** (every 30 minutes)
+- **Error notifications** for critical issues
+- **Remote bot control** via commands:
+  - `/start` - Welcome message and command overview
+  - `/status` - Current bot status and basic statistics  
+  - `/stats` - Detailed performance statistics
+  - `/stop` - Stop the bot remotely
+  - `/help` - Show available commands and features
+
 ## 🛡️ Security
 
 ### MetaMask Integration
@@ -300,6 +351,10 @@ npm run test              # Run smart contract tests
 # 🆕 Etherscan V2 Testing
 npm run test:etherscan     # Quick API test across multiple chains
 npm run etherscan:demo     # Comprehensive V2 demo with examples
+
+# 📱 Telegram Integration Testing
+npm run test:telegram      # Test Telegram bot configuration
+npm run demo:telegram      # Demonstrate Telegram features
 
 # Deployment & Production
 npm run deploy            # Deploy contracts to networks
