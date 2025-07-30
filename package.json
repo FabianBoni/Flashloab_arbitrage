@@ -9,6 +9,7 @@
     "build:contracts": "npx hardhat compile",
     "test": "npx hardhat test",
     "test:etherscan": "node test-etherscan-v2.js",
+    "test:rate-limiting": "node test-rate-limiting.js",
     "deploy": "npx hardhat run scripts/deploy.ts",
     "start": "node dist/src/index.js",
     "start:web": "node dist/src/web-server.js",
