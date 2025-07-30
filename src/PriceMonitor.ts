@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { DEXConfig, ArbitrageOpportunity } from './types';
+import { DEXConfig, ArbitrageOpportunity, ChainConfig } from './types';
 import { RateLimiter } from './RateLimiter.js';
 
 const UNISWAP_V2_ROUTER_ABI = [
@@ -16,29 +16,64 @@ const ERC20_ABI = [
 ];
 
 export class PriceMonitor {
-  private providers: Map<number, ethers.JsonRpcProvider> = new Map();
-  private routers: Map<string, ethers.Contract> = new Map();
+  private providers: Map<number, ethers.JsonRpcProvider[]> = new Map(); // Array of providers for rotation
+  private providerIndex: Map<number, number> = new Map(); // Current provider index for each chain
+  private routers: Map<string, ethers.Contract[]> = new Map(); // Array of router contracts for rotation
   private demoMode: boolean;
   private rateLimiter: RateLimiter;
 
-  constructor(chainConfigs: Array<{ chainId: number; rpcUrl: string; dexes: DEXConfig[] }>, demoMode = false) {
+  constructor(chainConfigs: ChainConfig[], demoMode = false) {
     this.demoMode = demoMode;
     this.rateLimiter = RateLimiter.getInstance();
     
     if (!demoMode) {
       // Initialize providers and router contracts only in live mode
       chainConfigs.forEach(config => {
-        if (config.rpcUrl) {
-          const provider = new ethers.JsonRpcProvider(config.rpcUrl);
-          this.providers.set(config.chainId, provider);
-
-          config.dexes.forEach(dex => {
-            const router = new ethers.Contract(dex.router, UNISWAP_V2_ROUTER_ABI, provider);
-            this.routers.set(`${config.chainId}-${dex.name}`, router);
-          });
+        // Use rpcUrls array if available, otherwise fall back to single rpcUrl
+        const rpcUrls = config.rpcUrls && config.rpcUrls.length > 0 ? config.rpcUrls : [config.rpcUrl];
+        const validRpcUrls = rpcUrls.filter((url: string) => url && url.trim() !== '');
+        
+        if (validRpcUrls.length === 0) {
+          console.warn(`No valid RPC URLs found for chain ${config.chainId}`);
+          return;
         }
+
+        // Create providers for all RPC URLs
+        const providers = validRpcUrls.map((url: string) => new ethers.JsonRpcProvider(url));
+        this.providers.set(config.chainId, providers);
+        this.providerIndex.set(config.chainId, 0); // Start with first provider
+
+        // Create router contracts for each DEX with all providers
+        config.dexes.forEach((dex: DEXConfig) => {
+          const routerContracts = providers.map((provider: ethers.JsonRpcProvider) => 
+            new ethers.Contract(dex.router, UNISWAP_V2_ROUTER_ABI, provider)
+          );
+          this.routers.set(`${config.chainId}-${dex.name}`, routerContracts);
+        });
+
+        console.log(`Initialized ${providers.length} RPC endpoints for chain ${config.chainId} (${config.name})`);
       });
     }
+  }
+
+  /**
+   * Get next router contract using round-robin provider rotation
+   */
+  private getNextRouter(chainId: number, dexName: string): ethers.Contract | null {
+    const routerKey = `${chainId}-${dexName}`;
+    const routers = this.routers.get(routerKey);
+    
+    if (!routers || routers.length === 0) {
+      return null;
+    }
+
+    // Get current provider index and rotate
+    const currentIndex = this.providerIndex.get(chainId) || 0;
+    const nextIndex = (currentIndex + 1) % routers.length;
+    this.providerIndex.set(chainId, nextIndex);
+
+    // Return router with rotated provider
+    return routers[currentIndex];
   }
 
   /**
@@ -60,16 +95,15 @@ export class PriceMonitor {
         return mockPrice;
       }
 
-      const routerKey = `${chainId}-${dexName}`;
-      const router = this.routers.get(routerKey);
+      const router = this.getNextRouter(chainId, dexName);
       
       if (!router) {
-        throw new Error(`Router not found for ${routerKey}`);
+        throw new Error(`Router not found for ${chainId}-${dexName}`);
       }
 
       const path = [tokenA, tokenB];
       
-      // Use rate limiter for the RPC call
+      // Use rate limiter for the RPC call with enhanced context
       const amounts = await this.rateLimiter.executeWithRateLimit(
         () => router.getAmountsOut(amountIn, path),
         `${dexName}-${chainId}-getAmountsOut`
@@ -81,9 +115,21 @@ export class PriceMonitor {
       
       return amounts[amounts.length - 1];
     } catch (error) {
-      console.error(`Error getting price from ${dexName} on chain ${chainId}:`, error);
+      // Reduce logging verbosity for rate limit errors (handled by RateLimiter)
+      if (!this.isRateLimitError(error)) {
+        console.error(`Error getting price from ${dexName} on chain ${chainId}:`, error);
+      }
       return BigInt(0);
     }
+  }
+
+  private isRateLimitError(error: any): boolean {
+    if (!error) return false;
+    const errorString = JSON.stringify(error);
+    return error?.code === 'BAD_DATA' || 
+           errorString.includes('rate limit') ||
+           errorString.includes('too many requests') ||
+           errorString.includes('429');
   }
 
   /**
@@ -177,21 +223,36 @@ export class PriceMonitor {
     balance?: bigint;
   }> {
     try {
-      const provider = this.providers.get(chainId);
-      if (!provider) {
+      const providers = this.providers.get(chainId);
+      if (!providers || providers.length === 0) {
         throw new Error(`Provider not found for chain ${chainId}`);
       }
 
+      // Use the current provider from rotation
+      const currentIndex = this.providerIndex.get(chainId) || 0;
+      const provider = providers[currentIndex];
+      
       const token = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
       
       const [symbol, decimals] = await Promise.all([
-        token.symbol(),
-        token.decimals(),
+        this.rateLimiter.executeWithRateLimit(
+          () => token.symbol(),
+          `token-symbol-${chainId}`
+        ),
+        this.rateLimiter.executeWithRateLimit(
+          () => token.decimals(),
+          `token-decimals-${chainId}`
+        ),
       ]);
 
-      return { symbol, decimals: Number(decimals) };
+      return { 
+        symbol: symbol || 'UNKNOWN', 
+        decimals: Number(decimals) || 18 
+      };
     } catch (error) {
-      console.error(`Error getting token info for ${tokenAddress}:`, error);
+      if (!this.isRateLimitError(error)) {
+        console.error(`Error getting token info for ${tokenAddress}:`, error);
+      }
       return { symbol: 'UNKNOWN', decimals: 18 };
     }
   }

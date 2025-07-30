@@ -24,6 +24,7 @@ export interface ChainConfig {
   chainId: number;
   name: string;
   rpcUrl: string;
+  rpcUrls?: string[]; // Optional array of RPC URLs for load balancing
   flashloanProvider: string;
   dexes: DEXConfig[];
 }

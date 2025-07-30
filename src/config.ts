@@ -5,6 +5,13 @@ export const SUPPORTED_CHAINS: ChainConfig[] = [
     chainId: 56,
     name: 'BSC',
     rpcUrl: process.env.BSC_RPC_URL || '',
+    // Additional RPC endpoints for load distribution
+    rpcUrls: [
+      process.env.BSC_RPC_URL || '',
+      process.env.BSC_RPC_URL_2 || 'https://bsc-dataseed1.binance.org/',
+      process.env.BSC_RPC_URL_3 || 'https://bsc-dataseed2.binance.org/',
+      process.env.BSC_RPC_URL_4 || 'https://bsc-dataseed3.binance.org/',
+    ].filter(url => url !== ''), // Remove empty URLs
     flashloanProvider: '0x6807dc923806fE8Fd134338EABCA509979a7e0cB', // Aave V3
     dexes: [
       {
