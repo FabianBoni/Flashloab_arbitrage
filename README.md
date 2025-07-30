@@ -483,3 +483,32 @@ This software is for educational and research purposes. Trading cryptocurrencies
 - **Unified error handling** - Consistent API responses across all chains
 
 **Migration Required:** Update your `.env` file to use only `ETHERSCAN_API_KEY` for all chains.
+
+### v1.2.0 - Telegram Integration (July 30, 2025)
+
+#### 📱 **New Telegram Features**
+- **Complete Telegram Bot Integration** - Real-time notifications and remote control
+- **Automated Trade Alerts** - Success/failure notifications with profit details and transaction hashes
+- **Periodic Statistics Reports** - Comprehensive performance summaries every 30 minutes
+- **Bot Command Support** - `/status`, `/stats`, `/stop`, `/help`, `/start` with full bot integration
+- **Error Notifications** - Critical error alerts with context and timestamps
+- **Opportunity Alerts** - High-profit opportunity notifications (>2% profit threshold)
+
+#### 🔧 **Technical Implementation**
+- **TelegramBotService Class** - Comprehensive service with graceful degradation
+- **Dynamic Import Architecture** - Avoids circular dependencies in command handlers
+- **Integration Points** - Hooks into existing logging, statistics, and event systems
+- **Minimal Dependencies** - Single new dependency (node-telegram-bot-api)
+- **Environment Configuration** - Optional Telegram settings with clear setup instructions
+
+#### 🧪 **Testing & Validation**
+- **Test Scripts** - `npm run test:telegram` and `npm run demo:telegram`
+- **Build Verification** - All TypeScript compilation and JavaScript output validated
+- **Graceful Degradation** - Full functionality without Telegram configuration
+- **Command Integration** - Remote bot control via Telegram tested and verified
+
+#### 📖 **Documentation & Setup**
+- **Complete Setup Guide** - Step-by-step Telegram bot creation and configuration
+- **Feature Documentation** - All commands and notification types documented
+- **Demo Scripts** - Interactive demonstrations of Telegram capabilities
+- **Configuration Examples** - Clear environment variable setup instructions
