@@ -19,6 +19,13 @@ A comprehensive flashloan arbitrage system that automatically detects and execut
 - **Flashloan-based execution** via Aave V3 for capital efficiency
 - **Risk management** with configurable profit thresholds and slippage protection
 
+### 📱 Telegram Integration
+- **Real-time notifications** for trade executions and opportunities
+- **Bot commands** for status monitoring and control (/status, /stats, /stop)
+- **Automated alerts** for errors and critical events
+- **Periodic statistics reports** delivered directly to your Telegram
+- **Graceful degradation** - works without Telegram configuration
+
 ### � Etherscan V2 Integration
 - **Single API key** for all supported blockchain networks
 - **Contract verification** across 50+ chains with one configuration
@@ -132,6 +139,34 @@ npm run build
    npm start
    ```
 
+### 📱 Telegram Setup (Optional)
+
+To enable Telegram notifications:
+
+1. **Create a Telegram Bot:**
+   - Message [@BotFather](https://t.me/BotFather) on Telegram
+   - Use `/newbot` command and follow instructions
+   - Save the bot token you receive
+
+2. **Get your Chat ID:**
+   - Start a chat with your bot
+   - Send any message to your bot
+   - Visit: `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`
+   - Find your chat ID in the response
+
+3. **Configure Environment:**
+   ```bash
+   # Add to your .env file
+   TELEGRAM_BOT_TOKEN=your_bot_token_here
+   TELEGRAM_CHAT_ID=your_chat_id_here
+   ```
+
+4. **Test the Integration:**
+   ```bash
+   # Test Telegram bot functionality
+   node test-telegram.js
+   ```
+
 ## 🌐 Supported Networks
 
 | Network | Chain ID | DEXes | Flashloan Provider |
@@ -174,6 +209,10 @@ OPPORTUNITY_CHECK_INTERVAL=10000   # Opportunity scan every 10 seconds
 
 # Web Server
 WEB_PORT=3000                      # Web interface port
+
+# 📱 Telegram Bot Configuration (Optional)
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here    # Get from @BotFather
+TELEGRAM_CHAT_ID=your_telegram_chat_id_here        # Your chat/group ID for notifications
 ```
 
 ### 🆕 Etherscan V2 Benefits
@@ -273,6 +312,18 @@ public/
 - **Timestamped entries** with automatic scrolling
 - **Activity filtering** and history management
 
+### 📱 Telegram Features
+- **Real-time notifications** for all bot activities
+- **Trade alerts** with profit/loss details and transaction hashes
+- **Periodic statistics reports** (every 30 minutes)
+- **Error notifications** for critical issues
+- **Remote bot control** via commands:
+  - `/start` - Welcome message and command overview
+  - `/status` - Current bot status and basic statistics  
+  - `/stats` - Detailed performance statistics
+  - `/stop` - Stop the bot remotely
+  - `/help` - Show available commands and features
+
 ## 🛡️ Security
 
 ### MetaMask Integration
@@ -300,6 +351,10 @@ npm run test              # Run smart contract tests
 # 🆕 Etherscan V2 Testing
 npm run test:etherscan     # Quick API test across multiple chains
 npm run etherscan:demo     # Comprehensive V2 demo with examples
+
+# 📱 Telegram Integration Testing
+npm run test:telegram      # Test Telegram bot configuration
+npm run demo:telegram      # Demonstrate Telegram features
 
 # Deployment & Production
 npm run deploy            # Deploy contracts to networks
@@ -428,3 +483,32 @@ This software is for educational and research purposes. Trading cryptocurrencies
 - **Unified error handling** - Consistent API responses across all chains
 
 **Migration Required:** Update your `.env` file to use only `ETHERSCAN_API_KEY` for all chains.
+
+### v1.2.0 - Telegram Integration (July 30, 2025)
+
+#### 📱 **New Telegram Features**
+- **Complete Telegram Bot Integration** - Real-time notifications and remote control
+- **Automated Trade Alerts** - Success/failure notifications with profit details and transaction hashes
+- **Periodic Statistics Reports** - Comprehensive performance summaries every 30 minutes
+- **Bot Command Support** - `/status`, `/stats`, `/stop`, `/help`, `/start` with full bot integration
+- **Error Notifications** - Critical error alerts with context and timestamps
+- **Opportunity Alerts** - High-profit opportunity notifications (>2% profit threshold)
+
+#### 🔧 **Technical Implementation**
+- **TelegramBotService Class** - Comprehensive service with graceful degradation
+- **Dynamic Import Architecture** - Avoids circular dependencies in command handlers
+- **Integration Points** - Hooks into existing logging, statistics, and event systems
+- **Minimal Dependencies** - Single new dependency (node-telegram-bot-api)
+- **Environment Configuration** - Optional Telegram settings with clear setup instructions
+
+#### 🧪 **Testing & Validation**
+- **Test Scripts** - `npm run test:telegram` and `npm run demo:telegram`
+- **Build Verification** - All TypeScript compilation and JavaScript output validated
+- **Graceful Degradation** - Full functionality without Telegram configuration
+- **Command Integration** - Remote bot control via Telegram tested and verified
+
+#### 📖 **Documentation & Setup**
+- **Complete Setup Guide** - Step-by-step Telegram bot creation and configuration
+- **Feature Documentation** - All commands and notification types documented
+- **Demo Scripts** - Interactive demonstrations of Telegram capabilities
+- **Configuration Examples** - Clear environment variable setup instructions

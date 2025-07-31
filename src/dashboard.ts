@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { ArbitrageDashboardServer } from './dashboard-server.js';
+import { ArbitrageDashboardServer } from './dashboard-server';
 
 async function main() {
   console.log('🚀 Starting Flashloan Arbitrage Dashboard...');

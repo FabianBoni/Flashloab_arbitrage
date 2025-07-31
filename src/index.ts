@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { PriceMonitor } from './PriceMonitor';
 import { ArbitrageExecutor } from './ArbitrageExecutor';
+import { TelegramBotService } from './TelegramBot';
 import { SUPPORTED_CHAINS, POPULAR_TOKENS, MIN_PROFIT_THRESHOLD, OPPORTUNITY_CHECK_INTERVAL, getTestModeChains } from './config';
 import { ArbitrageOpportunity } from './types';
 import { logger } from './logger';
@@ -17,6 +18,7 @@ export class FlashloanArbitrageBot {
   private static instance: FlashloanArbitrageBot | null = null;
   private priceMonitor: PriceMonitor;
   private executor: ArbitrageExecutor;
+  private telegramBot: TelegramBotService;
   private stats: BotStats;
   private startTime: number;
   private isRunning: boolean = false;
@@ -31,6 +33,9 @@ export class FlashloanArbitrageBot {
       totalProfit: 0,
       uptime: 0,
     };
+
+    // Initialize Telegram bot service
+    this.telegramBot = new TelegramBotService();
 
     // Check for demo mode
     const demoMode = process.env.DEMO_MODE === 'true';
@@ -113,8 +118,12 @@ export class FlashloanArbitrageBot {
     logger.info(`   - Minimum profit threshold: ${MIN_PROFIT_THRESHOLD * 100}%`);
     logger.info(`   - Check interval: ${OPPORTUNITY_CHECK_INTERVAL}ms`);
     logger.info(`   - Supported chains: ${SUPPORTED_CHAINS.length}`);
+    logger.info(`   - Telegram notifications: ${this.telegramBot.isActive() ? 'Enabled' : 'Disabled'}`);
 
     this.isRunning = true;
+
+    // Send Telegram notification
+    await this.telegramBot.notifyBotStarted();
 
     // Prepare token list for monitoring
     const tokensToMonitor = this.prepareTokenList();
@@ -131,9 +140,15 @@ export class FlashloanArbitrageBot {
   /**
    * Stop the arbitrage bot
    */
-  stop(): void {
+  async stop(): Promise<void> {
     logger.info('🛑 Stopping Flashloan Arbitrage Bot...');
     this.isRunning = false;
+    
+    // Send Telegram notification
+    await this.telegramBot.notifyBotStopped();
+    
+    // Shutdown Telegram bot
+    await this.telegramBot.shutdown();
   }
 
   /**
@@ -150,6 +165,11 @@ export class FlashloanArbitrageBot {
     const profitableOpportunities = opportunities.filter(
       op => op.profitPercent >= MIN_PROFIT_THRESHOLD * 100
     );
+
+    // Send Telegram notification for significant opportunities
+    if (opportunities.length > 0) {
+      await this.telegramBot.notifyOpportunityFound(opportunities);
+    }
 
     // Log opportunity discovery (throttled)
     if (profitableOpportunities.length > 0) {
@@ -197,11 +217,23 @@ export class FlashloanArbitrageBot {
 
         logger.success(`Trade successful! Profit: ${profit} ETH`);
         logger.success(`Transaction: ${result.txHash}`);
+        
+        // Send Telegram notification for successful trade
+        await this.telegramBot.notifyTradeExecution(opportunity, result);
       } else {
         logger.error(`Trade failed: ${result.error}`);
+        
+        // Send Telegram notification for failed trade
+        await this.telegramBot.notifyTradeExecution(opportunity, result);
       }
     } catch (error) {
       logger.error('Error executing opportunity:', error);
+      
+      // Send Telegram error notification
+      await this.telegramBot.notifyError(
+        error instanceof Error ? error.message : 'Unknown error during trade execution',
+        `Opportunity: ${opportunity.profitPercent.toFixed(2)}% profit on ${opportunity.dexA} -> ${opportunity.dexB}`
+      );
     }
   }
 
@@ -231,11 +263,14 @@ export class FlashloanArbitrageBot {
    * Start periodic stats reporting
    */
   private startStatsReporting(): void {
-    setInterval(() => {
+    setInterval(async () => {
       if (!this.isRunning) return;
 
       this.stats.uptime = Date.now() - this.startTime;
       this.printStats();
+      
+      // Send periodic Telegram stats report
+      await this.telegramBot.sendStatsReport(this.stats);
     }, 60000); // Report every minute
   }
 
@@ -290,15 +325,15 @@ async function main() {
     const bot = new FlashloanArbitrageBot();
     
     // Handle graceful shutdown
-    process.on('SIGINT', () => {
+    process.on('SIGINT', async () => {
       logger.info('\n👋 Received SIGINT, shutting down gracefully...');
-      bot.stop();
+      await bot.stop();
       process.exit(0);
     });
 
-    process.on('SIGTERM', () => {
+    process.on('SIGTERM', async () => {
       logger.info('\n👋 Received SIGTERM, shutting down gracefully...');
-      bot.stop();
+      await bot.stop();
       process.exit(0);
     });
 
