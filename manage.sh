@@ -1,38 +1,53 @@
 #!/bin/bash
 
 # BSC Arbitrage Scanner - Docker Management Script
-# Simple commands to manage your arbitrage scanner
+# Compatible with both docker-compose and docker compose
 
 ACTION=${1:-help}
+
+# Function to detect and use correct Docker Compose command
+get_compose_cmd() {
+    if command -v docker-compose &> /dev/null; then
+        echo "docker-compose"
+    elif docker compose version &> /dev/null 2>&1; then
+        echo "docker compose"
+    else
+        echo "❌ Docker Compose not found!"
+        echo "Please install Docker Compose first"
+        exit 1
+    fi
+}
+
+COMPOSE_CMD=$(get_compose_cmd)
 
 case $ACTION in
     "start")
         echo "🚀 Starting BSC Arbitrage Scanner..."
-        docker-compose up -d
+        $COMPOSE_CMD up -d
         echo "✅ Scanner started!"
         echo "📋 Use './manage.sh logs' to view output"
         ;;
     
     "stop")
         echo "🛑 Stopping BSC Arbitrage Scanner..."
-        docker-compose down
+        $COMPOSE_CMD down
         echo "✅ Scanner stopped!"
         ;;
     
     "restart")
         echo "🔄 Restarting BSC Arbitrage Scanner..."
-        docker-compose restart
+        $COMPOSE_CMD restart
         echo "✅ Scanner restarted!"
         ;;
     
     "logs")
         echo "📋 Showing live logs (Ctrl+C to exit)..."
-        docker-compose logs -f
+        $COMPOSE_CMD logs -f
         ;;
     
     "status")
         echo "📊 Container Status:"
-        docker-compose ps
+        $COMPOSE_CMD ps
         echo ""
         echo "💾 Resource Usage:"
         docker stats --no-stream bsc-arbitrage-scanner 2>/dev/null || echo "Container not running"
@@ -42,7 +57,7 @@ case $ACTION in
         echo "⬇️ Updating application..."
         git pull
         echo "🔨 Rebuilding container..."
-        docker-compose up -d --build
+        $COMPOSE_CMD up -d --build
         echo "✅ Update complete!"
         ;;
     
@@ -54,15 +69,15 @@ case $ACTION in
     
     "clean")
         echo "🧹 Cleaning up Docker resources..."
-        docker-compose down
+        $COMPOSE_CMD down
         docker system prune -f
         echo "✅ Cleanup complete!"
         ;;
     
     "install")
         echo "📦 Installing BSC Arbitrage Scanner..."
-        chmod +x setup-pi.sh
-        ./setup-pi.sh
+        chmod +x setup-pi-modern.sh
+        ./setup-pi-modern.sh
         ;;
     
     "backup")
@@ -72,9 +87,16 @@ case $ACTION in
         echo "✅ Backup created: $BACKUP_FILE"
         ;;
     
+    "compose-test")
+        echo "🧪 Testing Docker Compose..."
+        echo "Using command: $COMPOSE_CMD"
+        $COMPOSE_CMD version
+        ;;
+    
     "help"|*)
         echo "🤖 BSC Arbitrage Scanner - Management Commands"
         echo "=============================================="
+        echo "Using: $COMPOSE_CMD"
         echo ""
         echo "Basic Operations:"
         echo "  ./manage.sh start     - Start the scanner"
@@ -89,8 +111,9 @@ case $ACTION in
         echo "  ./manage.sh clean     - Clean Docker resources"
         echo "  ./manage.sh backup    - Backup configuration and logs"
         echo ""
-        echo "Setup:"
-        echo "  ./manage.sh install   - Full Raspberry Pi setup"
+        echo "Setup & Testing:"
+        echo "  ./manage.sh install      - Full Raspberry Pi setup"
+        echo "  ./manage.sh compose-test - Test Docker Compose"
         echo ""
         echo "💡 Default mode: MONITORING (no trading)"
         echo "🔑 Add PRIVATE_KEY to .env to enable trading"

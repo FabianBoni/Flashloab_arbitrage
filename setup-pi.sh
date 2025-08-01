@@ -34,8 +34,18 @@ fi
 # Install Docker Compose if not present
 if ! command -v docker-compose &> /dev/null; then
     echo "🔧 Installing Docker Compose..."
-    sudo pip3 install docker-compose
-    echo "✅ Docker Compose installed"
+    
+    # Try system package first (recommended for modern Pi OS)
+    if sudo apt install -y docker-compose-plugin; then
+        echo "✅ Docker Compose installed via apt"
+    else
+        # Fallback: Download binary directly
+        echo "📦 Downloading Docker Compose binary..."
+        COMPOSE_VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep 'tag_name' | cut -d\" -f4)
+        sudo curl -L "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        sudo chmod +x /usr/local/bin/docker-compose
+        echo "✅ Docker Compose installed via binary"
+    fi
 else
     echo "✅ Docker Compose already installed"
 fi
