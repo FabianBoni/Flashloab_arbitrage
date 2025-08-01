@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 
 async function main() {
-  console.log('🚀 Deploying FlashloanArbitrage contract...');
+  console.log('🚀 Deploying BSCFlashloanArbitrageV2 contract (Real Flashloans)...');
 
   // Get the ContractFactory and Signers
   const [deployer] = await ethers.getSigners();
@@ -11,14 +11,14 @@ async function main() {
   const balance = await deployer.provider.getBalance(deployer.address);
   console.log('💰 Account balance:', ethers.formatEther(balance), 'ETH');
 
-  // Deploy the contract
-  const FlashloanArbitrage = await ethers.getContractFactory('FlashloanArbitrage');
-  const flashloanArbitrage = await FlashloanArbitrage.deploy();
+  // Deploy the BSC V2 contract with real flashloans
+  const BSCFlashloanArbitrageV2 = await ethers.getContractFactory('BSCFlashloanArbitrageV2');
+  const flashloanArbitrage = await BSCFlashloanArbitrageV2.deploy();
 
   await flashloanArbitrage.waitForDeployment();
   const contractAddress = await flashloanArbitrage.getAddress();
 
-  console.log('✅ FlashloanArbitrage deployed to:', contractAddress);
+  console.log('✅ BSCFlashloanArbitrageV2 deployed to:', contractAddress);
 
   // Verify deployment
   console.log('🔍 Verifying contract deployment...');

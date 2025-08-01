@@ -1,0 +1,16 @@
+# BSC Arbitrage Scanner Requirements - Optimized for Raspberry Pi
+web3==6.11.3
+python-dotenv==1.0.0
+requests==2.31.0
+aiohttp==3.9.1
+
+# Crypto and math libraries
+eth-account==0.9.0
+eth-hash==0.5.2
+hexbytes==0.3.1
+
+# Performance optimizations for Raspberry Pi
+ujson==5.8.0
+
+# Enhanced logging
+colorlog==6.8.0

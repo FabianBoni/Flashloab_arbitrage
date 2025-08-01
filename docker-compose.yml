@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  bsc-arbitrage:
+    build: .
+    container_name: bsc-arbitrage-scanner
+    restart: unless-stopped
+    
+    # Environment variables (you can override these)
+    environment:
+      # BSC Configuration
+      - BSC_RPC_URL=https://bsc-dataseed1.binance.org/
+      - SCAN_INTERVAL=10
+      
+      # Profit Thresholds (adjust as needed)
+      - MIN_PROFIT_THRESHOLD=0.008
+      
+      # Telegram Notifications (optional)
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      
+      # Trading Configuration (optional - for real trading)
+      - PRIVATE_KEY=${PRIVATE_KEY}
+    
+    # Mount logs directory for persistence
+    volumes:
+      - ./logs:/home/arbitrage/app/logs
+      - ./.env:/home/arbitrage/app/.env:ro
+    
+    # Resource limits for Raspberry Pi
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+        reservations:
+          memory: 256M
+          cpus: '0.5'
+    
+    # Network configuration
+    network_mode: bridge
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('https://bsc-dataseed1.binance.org/', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

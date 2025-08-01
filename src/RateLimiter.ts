@@ -5,15 +5,15 @@ export class RateLimiter {
     private requestQueue: Array<() => Promise<any>> = [];
     private processing = false;
     private readonly maxConcurrent = 1; // Keep at 1 for maximum stability
-    private readonly delayBetweenRequests = 1200; // Erhöhe auf 1200ms für extreme Ratenbegrenzung
-    private readonly retryDelay = 7000; // Increase retry delay to 7 seconds
+    private readonly delayBetweenRequests = 5000; // Erhöhe auf 5000ms für maximale BSC-Stabilität
+    private readonly retryDelay = 15000; // Increase retry delay to 15 seconds
     private activeRequests = 0;
     private lastRequestTime = 0;
     private isCircuitBreakerOpen = false;
     private circuitBreakerResetTime = 0;
-    private readonly circuitBreakerTimeout = 30000; // 30 seconds circuit breaker timeout
+    private readonly circuitBreakerTimeout = 120000; // Erhöhe auf 120 Sekunden für echte Recovery
     private consecutiveFailures = 0;
-    private readonly maxConsecutiveFailures = 3;
+    private readonly maxConsecutiveFailures = 15; // Erhöhe auf 15 für ultra-tolerante Blockierung
 
     private constructor() {
         // Using the exported logger instance

@@ -1,514 +1,148 @@
-# 🚀 Flashloan Arbitrage Bot
+# BSC Arbitrage Scanner - Raspberry Pi Docker Edition
 
-A comprehensive flashloan arbitrage system that automatically detects and executes profitable arbitrage opportunities across multiple DEXes and blockchain networks, with full **MetaMask integration**.
+🚀 **Production-ready arbitrage scanner optimized for Raspberry Pi deployment**
 
-> ✅ **Updated to Etherscan V2 API** - Now supports 50+ chains with a single API key!
+Monitor and execute profitable arbitrage trades on Binance Smart Chain (BSC) with zero configuration required.
 
-## ✨ Key Features
-
-### 🦊 MetaMask Integration
-- **Browser-based interface** with MetaMask wallet connection
-- **Multi-chain support** - Ethereum, Polygon, Arbitrum, BSC
-- **Real-time wallet monitoring** - Balance, network, and connection status
-- **Transaction signing** through MetaMask for secure execution
-- **Network switching** and chain validation
-
-### 🤖 Automated Trading
-- **Multi-DEX price monitoring** across Uniswap, SushiSwap, QuickSwap
-- **Cross-chain arbitrage detection** with bridge integration
-- **Flashloan-based execution** via Aave V3 for capital efficiency
-- **Risk management** with configurable profit thresholds and slippage protection
-
-### 📱 Telegram Integration
-- **Real-time notifications** for trade executions and opportunities
-- **Bot commands** for status monitoring and control (/status, /stats, /stop)
-- **Automated alerts** for errors and critical events
-- **Periodic statistics reports** delivered directly to your Telegram
-- **Graceful degradation** - works without Telegram configuration
-
-### � Etherscan V2 Integration
-- **Single API key** for all supported blockchain networks
-- **Contract verification** across 50+ chains with one configuration
-- **Real-time transaction monitoring** and balance queries
-- **Future-proof** architecture that automatically supports new chains
-
-### �📊 Real-time Dashboard
-- **Live statistics** - opportunities found, trades executed, success rate, total profit
-- **Activity monitoring** with detailed logging
-- **Bot controls** - start/stop with wallet verification
-- **Network status** indicators and chain information
-
-## 🎯 Usage Modes
-
-### 1. Web Interface (MetaMask Required)
-Perfect for interactive monitoring and manual oversight:
+## 🎯 Quick Start (3 Commands)
 
 ```bash
-# Start the web interface
-npm run build
-npm run start:web
+# 1. Clone and setup
+git clone <your-repo-url> && cd Flashloab_arbitrage
 
-# Open http://localhost:3000 in your browser
-# Connect MetaMask and start trading
+# 2. One-command setup (installs everything)
+chmod +x setup-pi.sh && ./setup-pi.sh
+
+# 3. View live results
+./manage.sh logs
 ```
 
-### 2. CLI Mode (Private Key)
-Ideal for automated headless trading:
+**That's it!** Your arbitrage scanner is now running and monitoring BSC for profitable opportunities.
 
 ```bash
-# Configure environment
-cp .env.example .env
-# Edit .env with your settings
-
-# Start the CLI bot
-npm run build
-npm start
+python main.py
 ```
 
-## 🚀 Quick Start
+## Configuration
 
-### Prerequisites
-- **Node.js** 18+ and npm
-- **MetaMask** browser extension (for web interface)
-- **RPC endpoints** for supported chains
-- **Private key** (for CLI mode) or MetaMask (for web interface)
+### Trading Parameters
 
-### Installation
+- `MIN_PROFIT_THRESHOLD`: Minimum profit percentage (default: 0.5%)
+- `SCAN_INTERVAL`: Seconds between scans (default: 10s)
+- Immediate execution threshold: 2% (hardcoded for safety)
 
-```bash
-# Clone the repository
-git clone https://github.com/FabianBoni/Flashloab_arbitrage.git
-cd Flashloab_arbitrage
+### Telegram Setup
 
-# Install dependencies
-npm install
+1. Create a bot via [@BotFather](https://t.me/BotFather)
+2. Get your bot token
+3. Get your chat ID by messaging [@userinfobot](https://t.me/userinfobot)
+4. Add both to your `.env` file
 
-# Setup environment
-cp .env.example .env
-# Edit .env with your configuration
-# Note: Only ETHERSCAN_API_KEY needed for all chains with V2!
+## How It Works
 
-# Compile smart contracts
-npm run build:contracts
+### Arbitrage Process
 
-# Test your Etherscan V2 configuration
-npm run test:etherscan
+1. **Scanning**: Monitors DEX prices every 10 seconds
+2. **Detection**: Identifies price differences between DEXes
+3. **Validation**: Calculates real profit after fees and gas
+4. **Execution**: Uses flashloan for zero-capital arbitrage
+5. **Notification**: Sends results via Telegram
 
-# Build the project
-npm run build
+### Supported Trading Pairs
+
+- **Stablecoins**: BUSD/USDT, BUSD/USDC, USDT/USDC
+- **Major Pairs**: WBNB/BUSD, WBNB/ETH, ETH/BUSD, BTCB/BUSD
+- **DeFi Pairs**: CAKE/BUSD, CAKE/WBNB
+
+### Smart Contract
+
+The bot uses a custom flashloan contract deployed on BSC that:
+- Borrows tokens via PancakeSwap flashswap
+- Executes arbitrage trades across multiple DEXes
+- Automatically repays the loan + 0.3% fee
+- Returns profit to your wallet
+
+## Risk Management
+
+- **Slippage Protection**: Built-in price impact calculations
+- **Gas Optimization**: Dynamic gas price adjustment
+- **Rate Limiting**: Prevents API rate limit issues
+- **Error Handling**: Comprehensive error catching and reporting
+- **Execution Throttling**: Minimum 30s between trades
+
+## Monitoring
+
+### Telegram Notifications
+
+- 🚀 **Bot Start**: Confirmation when scanner starts
+- 💰 **Opportunities**: Real-time alerts for profitable trades
+- ✅ **Execution Results**: Success/failure notifications with details
+- 📊 **Statistics**: Periodic reports every 30 minutes
+
+### Log Files
+
+- `immediate_arbitrage.log`: Detailed execution logs
+- Console output: Real-time scanning information
+
+## Project Structure
+
+```
+Flashloab_arbitrage/
+├── main.py                 # Main arbitrage scanner
+├── requirements.txt        # Python dependencies
+├── .env.example           # Environment template
+├── README.md              # This file
+├── hardhat.config.ts      # Hardhat configuration
+├── package.json           # Node.js dependencies
+├── contracts/             # Smart contracts
+│   └── FlashloanArbitrage.sol
+├── scripts/               # Deployment scripts
+│   └── deploy.ts
+├── test/                  # Contract tests
+└── archive/               # Old files (reference only)
 ```
 
-### Web Interface Setup
+## Statistics Tracking
 
-1. **Start the web server:**
-   ```bash
-   npm run start:web
-   ```
+The bot tracks comprehensive statistics:
+- Total scans completed
+- Opportunities found
+- Successful executions  
+- Total profit earned
+- Gas costs incurred
+- Success rate percentage
 
-2. **Open your browser to:** `http://localhost:3000`
+## Safety Features
 
-3. **Connect MetaMask:**
-   - Ensure MetaMask is installed and unlocked
-   - Click "Connect MetaMask" 
-   - Approve the connection request
-   - Switch to a supported network if needed
+- **Simulation Mode**: Test without real funds (remove PRIVATE_KEY)
+- **Minimum Thresholds**: Only executes profitable trades
+- **Gas Limits**: Prevents excessive gas consumption
+- **Timeout Protection**: Prevents hanging transactions
+- **Balance Monitoring**: Warns on low BNB balance
 
-4. **Start trading:**
-   - Click "Start Bot" once connected
-   - Monitor real-time statistics and activity
-   - Stop/start as needed
+## Troubleshooting
 
-### CLI Setup
+### Common Issues
 
-1. **Configure your environment:**
-   ```bash
-   # Edit .env file
-   PRIVATE_KEY=your_private_key_here
-   ETHEREUM_RPC_URL=https://eth-mainnet.alchemyapi.io/v2/your-api-key
-   POLYGON_RPC_URL=https://polygon-mainnet.alchemyapi.io/v2/your-api-key
-   # ... other settings
-   ```
+1. **Connection Errors**: Check BSC RPC URL
+2. **Transaction Failures**: Verify contract address and gas settings
+3. **Low Profits**: Market conditions or high gas fees
+4. **Telegram Issues**: Verify bot token and chat ID
 
-2. **Deploy contracts (if needed):**
-   ```bash
-   npm run deploy
-   ```
+### Support
 
-3. **Start the bot:**
-   ```bash
-   npm start
-   ```
+- Check logs in `immediate_arbitrage.log`
+- Monitor console output for real-time status
+- Telegram notifications provide immediate feedback
 
-### 📱 Telegram Setup (Optional)
+## License
 
-To enable Telegram notifications:
+MIT License - see LICENSE.md
 
-1. **Create a Telegram Bot:**
-   - Message [@BotFather](https://t.me/BotFather) on Telegram
-   - Use `/newbot` command and follow instructions
-   - Save the bot token you receive
+## Disclaimer
 
-2. **Get your Chat ID:**
-   - Start a chat with your bot
-   - Send any message to your bot
-   - Visit: `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`
-   - Find your chat ID in the response
-
-3. **Configure Environment:**
-   ```bash
-   # Add to your .env file
-   TELEGRAM_BOT_TOKEN=your_bot_token_here
-   TELEGRAM_CHAT_ID=your_chat_id_here
-   ```
-
-4. **Test the Integration:**
-   ```bash
-   # Test Telegram bot functionality
-   node test-telegram.js
-   ```
-
-## 🌐 Supported Networks
-
-| Network | Chain ID | DEXes | Flashloan Provider |
-|---------|----------|-------|-------------------|
-| **Ethereum** | 1 | Uniswap V2, SushiSwap | Aave V3 |
-| **Polygon** | 137 | QuickSwap, SushiSwap | Aave V3 |
-| **Arbitrum** | 42161 | Uniswap V2, SushiSwap | Aave V3 |
-| **BSC** | 56 | PancakeSwap, SushiSwap | Aave V3 |
-
-## 🔧 Configuration
-
-### Environment Variables
-
-```bash
-# Network RPC URLs
-ETHEREUM_RPC_URL=https://eth-mainnet.alchemyapi.io/v2/your-api-key
-POLYGON_RPC_URL=https://polygon-mainnet.alchemyapi.io/v2/your-api-key
-ARBITRUM_RPC_URL=https://arb-mainnet.alchemyapi.io/v2/your-api-key
-BSC_RPC_URL=https://bsc-dataseed.binance.org/
-
-# Wallet Configuration
-PRIVATE_KEY=your_private_key_here  # For CLI mode only
-
-# 🆕 Etherscan V2 API Configuration (Single API Key for All Chains!)
-ETHERSCAN_API_KEY=your_etherscan_api_key  # Works for Ethereum, Polygon, Arbitrum, BSC, and 50+ other chains!
-
-# Legacy API keys (no longer needed with V2)
-# POLYGONSCAN_API_KEY=your_polygonscan_api_key
-# ARBISCAN_API_KEY=your_arbiscan_api_key  
-# BSCSCAN_API_KEY=your_bscscan_api_key
-
-# Trading Parameters
-MIN_PROFIT_THRESHOLD=0.01          # Minimum 1% profit
-MAX_GAS_PRICE=50                   # Max 50 gwei gas price
-SLIPPAGE_TOLERANCE=0.005           # 0.5% slippage tolerance
-
-# Monitoring Settings
-PRICE_UPDATE_INTERVAL=5000         # Price check every 5 seconds
-OPPORTUNITY_CHECK_INTERVAL=10000   # Opportunity scan every 10 seconds
-
-# Web Server
-WEB_PORT=3000                      # Web interface port
-
-# 📱 Telegram Bot Configuration (Optional)
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here    # Get from @BotFather
-TELEGRAM_CHAT_ID=your_telegram_chat_id_here        # Your chat/group ID for notifications
-```
-
-### 🆕 Etherscan V2 Benefits
-
-With the new Etherscan V2 API, you now enjoy:
-
-✅ **Single API Key**: One key works across 50+ supported chains  
-✅ **Unified Endpoint**: `https://api.etherscan.io/v2/api` for all chains  
-✅ **Simplified Configuration**: No more managing multiple API keys  
-✅ **Future-Proof**: Automatically supports new chains as they're added  
-✅ **Better Rate Limits**: Improved performance and reliability  
-
-**Supported Chains Include:**
-- Ethereum (1)
-- Polygon (137) 
-- Arbitrum (42161)
-- BSC (56)
-- Optimism (10)
-- Base (8453)
-- Scroll (534352)
-- Blast (81457)
-- And many more!
-
-#### 🧪 Test Your Configuration
-
-Test the new Etherscan V2 setup:
-
-```bash
-# Simple test script
-npm run test:etherscan
-
-# Advanced demo with examples
-npm run etherscan:demo
-```
-
-Both scripts will verify your API key works across multiple chains and show real-time balance queries.
-
-### Risk Management
-
-The system includes multiple safety mechanisms:
-
-- **Profit validation** before execution
-- **Gas price limits** to prevent high-cost transactions
-- **Slippage protection** for all trades
-- **Network validation** to ensure supported chains
-- **User confirmation** required for MetaMask transactions
-
-## 🏗️ Architecture
-
-### Smart Contract Layer
-```
-contracts/FlashloanArbitrage.sol    # Core arbitrage logic with Aave V3 integration
-```
-
-### Backend Services
-```
-src/
-├── index.ts                        # Main CLI bot orchestrator
-├── web-server.ts                   # Express server for web interface
-├── ArbitrageExecutor.ts            # Private key-based execution
-├── MetaMaskArbitrageExecutor.ts    # MetaMask-based execution
-├── PriceMonitor.ts                 # Multi-DEX price monitoring
-├── CrossChainArbitrage.ts          # Cross-chain opportunity detection
-├── config.ts                       # Chain and DEX configurations
-└── types.ts                        # TypeScript interfaces
-```
-
-### Frontend
-```
-public/
-├── index.html                      # Web interface
-└── app.js                          # MetaMask integration and UI logic
-```
-
-## 📊 Web Interface Features
-
-### 🔗 Wallet Connection
-- **MetaMask detection** and connection status
-- **Account information** with formatted address display
-- **Network validation** and chain switching
-- **Balance monitoring** with real-time updates
-
-### 🤖 Bot Controls
-- **Start/Stop functionality** with wallet verification
-- **Real-time status** indicators
-- **Connection requirements** enforcement
-
-### 📈 Live Statistics
-- **Opportunities found** - Total arbitrage opportunities detected
-- **Trades executed** - Number of executed transactions
-- **Success rate** - Percentage of successful trades
-- **Total profit** - Cumulative profit in ETH
-
-### 📝 Activity Log
-- **Real-time logging** of bot activities
-- **Color-coded messages** (success, warning, error)
-- **Timestamped entries** with automatic scrolling
-- **Activity filtering** and history management
-
-### 📱 Telegram Features
-- **Real-time notifications** for all bot activities
-- **Trade alerts** with profit/loss details and transaction hashes
-- **Periodic statistics reports** (every 30 minutes)
-- **Error notifications** for critical issues
-- **Remote bot control** via commands:
-  - `/start` - Welcome message and command overview
-  - `/status` - Current bot status and basic statistics  
-  - `/stats` - Detailed performance statistics
-  - `/stop` - Stop the bot remotely
-  - `/help` - Show available commands and features
-
-## 🛡️ Security
-
-### MetaMask Integration
-- **No private key storage** in browser environment
-- **User approval required** for all transactions
-- **Secure signing** through MetaMask extension
-- **Network validation** before execution
-
-### Smart Contract Security
-- **ReentrancyGuard** protection against reentrancy attacks
-- **Access control** with owner-only functions
-- **Slippage protection** in all DEX interactions
-- **Emergency withdrawal** functions for fund recovery
-
-## 🚀 Development
-
-### Available Scripts
-
-```bash
-# Build & Test
-npm run build              # Compile TypeScript
-npm run build:contracts    # Compile Solidity contracts
-npm run test              # Run smart contract tests
-
-# 🆕 Etherscan V2 Testing
-npm run test:etherscan     # Quick API test across multiple chains
-npm run etherscan:demo     # Comprehensive V2 demo with examples
-
-# 📱 Telegram Integration Testing
-npm run test:telegram      # Test Telegram bot configuration
-npm run demo:telegram      # Demonstrate Telegram features
-
-# Deployment & Production
-npm run deploy            # Deploy contracts to networks
-npm start                 # Start CLI bot
-npm run start:web         # Start web interface
-
-# Development
-npm run dev               # Development mode (CLI)
-npm run dev:web           # Development mode (web)
-npm run example           # Run usage examples
-
-# Code Quality
-npm run lint              # ESLint code checking
-npm run format            # Prettier code formatting
-```
-
-### Testing
-
-```bash
-# Run smart contract tests
-npm test
-
-# Test MetaMask integration
-npm run start:web
-# Open http://localhost:3000 and test with MetaMask
-```
-
-## 📝 Example Usage
-
-### Web Interface Workflow
-
-1. **Connect MetaMask:**
-   ```
-   🦊 Browser opens → Connect MetaMask → Approve connection
-   ```
-
-2. **Verify Network:**
-   ```
-   🌐 Check network → Switch if needed → Validate balance
-   ```
-
-3. **Start Trading:**
-   ```
-   🚀 Click "Start Bot" → MetaMask confirms → Bot begins monitoring
-   ```
-
-4. **Monitor Activity:**
-   ```
-   📊 Watch statistics → Review logs → Monitor profits
-   ```
-
-### CLI Workflow
-
-```bash
-# Set up environment
-export PRIVATE_KEY="your_private_key"
-export ETHEREUM_RPC_URL="your_rpc_url"
-
-# Start bot
-npm start
-
-# Monitor output
-🤖 Starting Flashloan Arbitrage Bot...
-📊 Monitoring configuration:
-   - Minimum profit threshold: 1%
-   - Check interval: 10000ms
-   - Supported chains: 4
-✅ Bot started successfully!
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Implement your changes
-4. Add tests for new functionality
-5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
-
-## ⚠️ Disclaimer
-
-This software is for educational and research purposes. Trading cryptocurrencies involves significant risk. Users are responsible for their own trading decisions and should thoroughly test the system before using real funds.
-
-## 🔗 Links
-
-- **Repository:** [https://github.com/FabianBoni/Flashloab_arbitrage](https://github.com/FabianBoni/Flashloab_arbitrage)
-- **Issues:** [https://github.com/FabianBoni/Flashloab_arbitrage/issues](https://github.com/FabianBoni/Flashloab_arbitrage/issues)
-- **MetaMask:** [https://metamask.io/](https://metamask.io/)
-- **Aave V3:** [https://aave.com/](https://aave.com/)
-- **Etherscan V2:** [https://docs.etherscan.io/etherscan-v2](https://docs.etherscan.io/etherscan-v2)
+**This software is for educational purposes. Trading cryptocurrencies involves substantial risk. Always test with small amounts first and understand the risks involved.**
 
 ---
 
-## 📋 Changelog
-
-### v1.1.0 - Etherscan V2 Update (July 29, 2025)
-
-#### ✅ **New Features**
-- **Etherscan V2 API Integration** - Single API key for all supported chains
-- **EtherscanV2Helper Class** - Comprehensive API wrapper for V2 functionality
-- **Multi-chain Contract Verification** - Unified verification across 50+ chains
-- **Enhanced Testing Scripts** - `npm run test:etherscan` and `npm run etherscan:demo`
-
-#### 🔧 **Configuration Improvements**
-- **Simplified .env setup** - Removed need for separate POLYGONSCAN_API_KEY, ARBISCAN_API_KEY, BSCSCAN_API_KEY
-- **Updated hardhat.config.ts** - V2 API endpoints and unified key configuration
-- **Enhanced TypeScript support** - Fixed all compilation errors and improved type definitions
-
-#### 🐛 **Bug Fixes & Build Improvements**
-- **Fixed Smart Contract compilation** - Resolved interface placement and address checksum issues
-- **Updated Solidity optimizer** - Added viaIR compilation to handle complex contract structures
-- **Fixed BigInt arithmetic** - Corrected TypeScript errors in test files
-- **Updated deprecated functions** - Replaced `safeApprove` with `forceApprove` for OpenZeppelin compatibility
-
-#### 📖 **Documentation Updates**
-- **Complete README overhaul** - Added V2 benefits, configuration guides, and testing instructions
-- **Migration documentation** - Clear guidance for upgrading from V1 to V2
-- **New utility scripts** - Comprehensive examples and demos
-
-#### ⚡ **Performance & Reliability**
-- **Better rate limits** - Improved API call efficiency with V2
-- **Future-proof architecture** - Automatic support for new chains as they're added
-- **Unified error handling** - Consistent API responses across all chains
-
-**Migration Required:** Update your `.env` file to use only `ETHERSCAN_API_KEY` for all chains.
-
-### v1.2.0 - Telegram Integration (July 30, 2025)
-
-#### 📱 **New Telegram Features**
-- **Complete Telegram Bot Integration** - Real-time notifications and remote control
-- **Automated Trade Alerts** - Success/failure notifications with profit details and transaction hashes
-- **Periodic Statistics Reports** - Comprehensive performance summaries every 30 minutes
-- **Bot Command Support** - `/status`, `/stats`, `/stop`, `/help`, `/start` with full bot integration
-- **Error Notifications** - Critical error alerts with context and timestamps
-- **Opportunity Alerts** - High-profit opportunity notifications (>2% profit threshold)
-
-#### 🔧 **Technical Implementation**
-- **TelegramBotService Class** - Comprehensive service with graceful degradation
-- **Dynamic Import Architecture** - Avoids circular dependencies in command handlers
-- **Integration Points** - Hooks into existing logging, statistics, and event systems
-- **Minimal Dependencies** - Single new dependency (node-telegram-bot-api)
-- **Environment Configuration** - Optional Telegram settings with clear setup instructions
-
-#### 🧪 **Testing & Validation**
-- **Test Scripts** - `npm run test:telegram` and `npm run demo:telegram`
-- **Build Verification** - All TypeScript compilation and JavaScript output validated
-- **Graceful Degradation** - Full functionality without Telegram configuration
-- **Command Integration** - Remote bot control via Telegram tested and verified
-
-#### 📖 **Documentation & Setup**
-- **Complete Setup Guide** - Step-by-step Telegram bot creation and configuration
-- **Feature Documentation** - All commands and notification types documented
-- **Demo Scripts** - Interactive demonstrations of Telegram capabilities
-- **Configuration Examples** - Clear environment variable setup instructions
+💡 **Pro Tip**: Start in simulation mode (without PRIVATE_KEY) to understand the bot's behavior before using real funds.

@@ -4,12 +4,16 @@
  * Run with: node test-telegram.js
  */
 
+require('dotenv').config();
 const { TelegramBotService } = require('./dist/src/TelegramBot');
 
 async function testTelegramBot() {
   console.log('🧪 Testing Telegram Bot Service...');
   
   const telegramBot = new TelegramBotService();
+  
+  // Wait a moment for initialization
+  await new Promise(resolve => setTimeout(resolve, 1000));
   
   if (!telegramBot.isActive()) {
     console.log('⚠️  Telegram bot is not configured or active.');
@@ -18,6 +22,9 @@ async function testTelegramBot() {
     console.log('   2. Add TELEGRAM_BOT_TOKEN to your .env file');
     console.log('   3. Add TELEGRAM_CHAT_ID to your .env file');
     console.log('   4. Run this test again');
+    console.log('\n📋 Current environment variables:');
+    console.log('   TELEGRAM_BOT_TOKEN:', process.env.TELEGRAM_BOT_TOKEN ? 'Set' : 'Not set');
+    console.log('   TELEGRAM_CHAT_ID:', process.env.TELEGRAM_CHAT_ID ? 'Set' : 'Not set');
     return;
   }
   
@@ -25,7 +32,7 @@ async function testTelegramBot() {
   
   // Test basic message sending
   console.log('📱 Sending test message...');
-  const success = await telegramBot.sendMessage('🧪 Test message from Flashloan Arbitrage Bot!\n\nTelegram integration is working correctly! 🚀');
+  const success = await telegramBot.sendTestMessage();
   
   if (success) {
     console.log('✅ Test message sent successfully!');
@@ -45,12 +52,26 @@ async function testTelegramBot() {
     uptime: 300000 // 5 minutes
   };
   
-  await telegramBot.sendStatsReport(mockStats);
+  await telegramBot.sendStats(mockStats);
   console.log('✅ Stats report test completed');
+  
+  // Test arbitrage opportunity alert
+  const mockOpportunity = {
+    tokenA: 'WBNB',
+    tokenB: 'BUSD',
+    profitPercentage: 1.25,
+    profitAmount: '0.0045 BNB',
+    dexA: 'PancakeSwap',
+    dexB: 'BabySwap',
+    chainId: 56
+  };
+  
+  await telegramBot.sendOpportunityAlert(mockOpportunity);
+  console.log('✅ Opportunity alert test completed');
   
   // Cleanup
   await telegramBot.shutdown();
-  console.log('🏁 Telegram bot test completed');
+  console.log('🏁 Telegram bot test completed successfully! ✅');
 }
 
 // Handle errors
