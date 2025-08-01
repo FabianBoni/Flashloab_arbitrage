@@ -23,9 +23,24 @@ COMPOSE_CMD=$(get_compose_cmd)
 case $ACTION in
     "start")
         echo "🚀 Starting BSC Arbitrage Scanner..."
+        
+        # Setup permissions first
+        if [ -f "./setup-permissions.sh" ]; then
+            echo "🔧 Setting up permissions..."
+            chmod +x ./setup-permissions.sh
+            ./setup-permissions.sh
+        fi
+        
         $COMPOSE_CMD up -d
         echo "✅ Scanner started!"
         echo "📋 Use './manage.sh logs' to view output"
+        ;;
+    
+    "setup")
+        echo "🔧 Setting up permissions and directories..."
+        chmod +x ./setup-permissions.sh
+        ./setup-permissions.sh
+        echo "✅ Setup complete!"
         ;;
     
     "stop")
@@ -112,6 +127,7 @@ case $ACTION in
         echo "  ./manage.sh backup    - Backup configuration and logs"
         echo ""
         echo "Setup & Testing:"
+        echo "  ./manage.sh setup        - Setup permissions and directories"
         echo "  ./manage.sh install      - Full Raspberry Pi setup"
         echo "  ./manage.sh compose-test - Test Docker Compose"
         echo ""

@@ -34,15 +34,30 @@ except ImportError:
 # Load environment variables
 load_dotenv()
 
-# Configure logging optimized for Docker and Pi
+# Configure logging optimized for Docker and Pi with permission handling
 log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
+
+# Create logs directory if it doesn't exist and we have permissions
+log_handlers = [logging.StreamHandler(sys.stdout)]
+try:
+    # Try to create logs directory
+    os.makedirs('logs', exist_ok=True)
+    # Test write permissions
+    test_file = 'logs/test_write.tmp'
+    with open(test_file, 'w') as f:
+        f.write('test')
+    os.remove(test_file)
+    # If successful, add file handler
+    log_handlers.append(logging.FileHandler('logs/arbitrage.log', encoding='utf-8'))
+    print("✅ File logging enabled: logs/arbitrage.log")
+except (PermissionError, OSError) as e:
+    print(f"⚠️  File logging disabled (permission error): {e}")
+    print("📄 Logging to console only")
+
 logging.basicConfig(
     level=getattr(logging, log_level),
     format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('logs/arbitrage.log', encoding='utf-8'),
-        logging.StreamHandler(sys.stdout)
-    ]
+    handlers=log_handlers
 )
 logger = logging.getLogger(__name__)
 

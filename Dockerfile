@@ -40,8 +40,11 @@ WORKDIR /home/arbitrage/app
 # Copy application files
 COPY --chown=arbitrage:arbitrage . .
 
-# Create logs directory
-RUN mkdir -p logs
+# Create logs directory with proper permissions
+RUN mkdir -p logs && \
+    chmod 755 logs && \
+    touch logs/arbitrage.log && \
+    chmod 644 logs/arbitrage.log
 
 # Set environment variables for production
 ENV PYTHONUNBUFFERED=1

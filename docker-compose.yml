@@ -22,9 +22,9 @@ services:
       # Trading Configuration (optional - for real trading)
       - PRIVATE_KEY=${PRIVATE_KEY}
     
-    # Mount logs directory for persistence
+    # Mount volumes for persistence
     volumes:
-      - ./logs:/home/arbitrage/app/logs
+      - arbitrage_logs:/home/arbitrage/app/logs
       - ./.env:/home/arbitrage/app/.env:ro
     
     # Resource limits for Raspberry Pi
@@ -54,3 +54,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+
+# Named volumes for persistence
+volumes:
+  arbitrage_logs:
+    driver: local
