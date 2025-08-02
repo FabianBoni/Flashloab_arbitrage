@@ -1,4 +1,4 @@
-# BSC Arbitrage Scanner Requirements - Optimized for Raspberry Pi
+# Enhanced BSC Arbitrage Scanner Requirements - CEX + DEX Integration
 web3==6.11.3
 python-dotenv==1.0.0
 requests==2.31.0
@@ -14,3 +14,7 @@ ujson==5.8.0
 
 # Enhanced logging
 colorlog==6.8.0
+
+# CEX API integration dependencies
+asyncio-throttle==1.0.2
+ccxt==4.2.25
