@@ -11,6 +11,7 @@ from decimal import Decimal
 from dataclasses import dataclass
 
 from cex_price_provider import CexPriceProvider, CexPrice, CexDexOpportunity, get_cex_symbol, get_dex_address
+from cex_trading_api import CexTradingAPI, TradeResult
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ class UnifiedArbitrageScanner:
     
     def __init__(self, dex_scanner=None):
         self.cex_provider = CexPriceProvider()
+        self.trading_api = CexTradingAPI()
         self.dex_scanner = dex_scanner  # Reference to existing DEX scanner
         self.last_scan_time = 0
         self.scan_interval = 30  # 30 seconds between scans
@@ -41,6 +43,10 @@ class UnifiedArbitrageScanner:
         # Track DEX prices cache to avoid redundant calls
         self.dex_price_cache = {}
         self.cache_expiry = 10  # 10 seconds cache
+        
+        # Trading configuration
+        self.auto_execute_cex = True  # Enable automatic CEX-CEX trading
+        self.auto_execute_cex_dex = False  # CEX-DEX requires manual approval for now
         
         logger.info("🔄 Unified CEX-DEX arbitrage scanner initialized")
     
@@ -58,25 +64,24 @@ class UnifiedArbitrageScanner:
         # If we have a DEX scanner reference, use it
         if self.dex_scanner:
             try:
-                # This would call the existing DEX price fetching logic
-                # For now, we'll simulate with a basic calculation
-                # In a real implementation, this would integrate with the existing PriceMonitor
-                
-                # Simulate DEX price fetching
-                # This should be replaced with actual DEX price fetching logic
-                mock_price = 1.0  # Placeholder
-                
-                # Cache the result
-                self.dex_price_cache[cache_key] = {
-                    'price': mock_price,
-                    'timestamp': current_time
-                }
-                
-                return mock_price
+                # Use the existing DEX scanner to get real prices
+                price_data = await self.dex_scanner.get_quote(token_in_address, token_out_address, amount_in)
+                if price_data and price_data.get('amount_out', 0) > 0:
+                    # Convert to price per token
+                    amount_out = price_data['amount_out']
+                    price = float(amount_out) / float(amount_in)
+                    
+                    # Cache the result
+                    self.dex_price_cache[cache_key] = {
+                        'price': price,
+                        'timestamp': current_time
+                    }
+                    
+                    return price
             except Exception as e:
-                logger.debug(f"Error getting DEX price: {e}")
-                return None
+                logger.debug(f"Error getting real DEX price: {e}")
         
+        # Fallback: Return None instead of mock data to prevent false opportunities
         return None
     
     async def find_cex_dex_opportunities(self) -> List[UnifiedOpportunity]:
@@ -254,6 +259,58 @@ class UnifiedArbitrageScanner:
                     continue
         
         return opportunities
+    
+    async def execute_cex_arbitrage(self, opportunity: UnifiedOpportunity) -> bool:
+        """Execute CEX-CEX arbitrage automatically"""
+        if not self.auto_execute_cex or opportunity.type != 'CEX_CEX':
+            logger.info(f"⚠️ Auto-execution disabled or wrong opportunity type: {opportunity.type}")
+            return False
+        
+        if not self.trading_api.trading_enabled:
+            logger.warning("⚠️ Trading API not enabled - skipping execution")
+            return False
+        
+        try:
+            # Convert amount from wei to normal units
+            trade_amount = float(opportunity.amount_in) / 1e18
+            
+            # Validate trade amount
+            if not self.trading_api._validate_trade_amount(opportunity.token_in_symbol, trade_amount):
+                logger.warning(f"⚠️ Trade amount {trade_amount} outside limits")
+                return False
+            
+            # Check if arbitrage is still feasible
+            symbol = f"{opportunity.token_in_symbol}/{opportunity.token_out_symbol}"
+            feasible = await self.trading_api.check_arbitrage_feasibility(
+                opportunity.buy_venue, opportunity.sell_venue, symbol, trade_amount
+            )
+            
+            if not feasible:
+                logger.warning(f"⚠️ Arbitrage no longer feasible: {opportunity.buy_venue} → {opportunity.sell_venue}")
+                return False
+            
+            logger.info(f"🔄 Executing CEX arbitrage: {opportunity.buy_venue} → {opportunity.sell_venue} | {symbol} | {trade_amount:.6f}")
+            
+            # Execute the arbitrage
+            async with self.trading_api:
+                buy_result, sell_result = await self.trading_api.execute_cex_arbitrage(
+                    opportunity.buy_venue,
+                    opportunity.sell_venue,
+                    symbol,
+                    trade_amount
+                )
+            
+            if buy_result.success and sell_result and sell_result.success:
+                profit = (sell_result.executed_price * sell_result.executed_amount) - (buy_result.executed_price * buy_result.executed_amount)
+                logger.info(f"✅ CEX arbitrage executed successfully! Profit: ${profit:.4f}")
+                return True
+            else:
+                logger.error("❌ CEX arbitrage execution failed")
+                return False
+                
+        except Exception as e:
+            logger.error(f"❌ Error executing CEX arbitrage: {e}")
+            return False
     
     async def find_all_opportunities(self) -> Dict[str, List[UnifiedOpportunity]]:
         """Find all types of arbitrage opportunities"""

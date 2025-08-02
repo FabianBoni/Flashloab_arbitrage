@@ -679,8 +679,13 @@ class ProductionFlashloanArbitrage:
             })
             
             # Sign and send
+            # Sign and send transaction
             signed_txn = self.w3.eth.account.sign_transaction(transaction, self.account.key)
-            tx_hash = self.w3.eth.send_raw_transaction(signed_txn.raw_transaction)
+            # Fix for newer Web3.py versions - use rawTransaction instead of raw_transaction
+            raw_tx = getattr(signed_txn, 'rawTransaction', getattr(signed_txn, 'raw_transaction', None))
+            if raw_tx is None:
+                raise Exception("Cannot access raw transaction data")
+            tx_hash = self.w3.eth.send_raw_transaction(raw_tx)
             
             logger.info(f"[TX] Flashloan transaction sent: {tx_hash.hex()}")
             

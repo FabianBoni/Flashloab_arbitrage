@@ -128,6 +128,31 @@ def log_optimization_summary():
     logger.info("  More opportunities per hour")
     logger.info("  Higher success rate")
 
+# DEX Configurations for compatibility
+DEX_CONFIGS = {
+    'pancakeswap': {
+        'router': '0x10ED43C718714eb63d5aA57B78B54704E256024E',
+        'factory': '0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73',
+        'fee': 0.0025,  # 0.25%
+        'name': 'PancakeSwap V2'
+    },
+    'apeswap': {
+        'router': '0xcF0feBd3f17CEf5b47b0cD257aCf6025c5BFf3b7',
+        'factory': '0x0841BD0B734E4F5853f0dD8d7Ea041c241fb0Da6',
+        'fee': 0.002,  # 0.20%
+        'name': 'ApeSwap'
+    },
+    'biswap': {
+        'router': '0x3a6d8cA21D1CF76F653A67577FA0D27453350dD8',
+        'factory': '0x858E3312ed3A876947EA49d572A7C42DE08af7EE',
+        'fee': 0.001,  # 0.10%
+        'name': 'Biswap'
+    }
+}
+
+# Use OPTIMIZED_TOKENS as VOLATILE_TOKENS for compatibility
+VOLATILE_TOKENS = OPTIMIZED_TOKENS.copy()
+
 if __name__ == "__main__":
     import logging
     logging.basicConfig(level=logging.INFO)
