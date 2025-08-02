@@ -60,6 +60,16 @@ case $ACTION in
         $COMPOSE_CMD logs -f
         ;;
     
+    "logs-file")
+        echo "📄 Checking log files..."
+        ./logs.sh file
+        ;;
+    
+    "logs-export")
+        echo "💾 Exporting logs..."
+        ./logs.sh export
+        ;;
+    
     "status")
         echo "📊 Container Status:"
         $COMPOSE_CMD ps
@@ -114,11 +124,13 @@ case $ACTION in
         echo "Using: $COMPOSE_CMD"
         echo ""
         echo "Basic Operations:"
-        echo "  ./manage.sh start     - Start the scanner"
-        echo "  ./manage.sh stop      - Stop the scanner"
-        echo "  ./manage.sh restart   - Restart the scanner"
-        echo "  ./manage.sh logs      - View live logs"
-        echo "  ./manage.sh status    - Check status and resources"
+        echo "  ./manage.sh start        - Start the scanner"
+        echo "  ./manage.sh stop         - Stop the scanner"
+        echo "  ./manage.sh restart      - Restart the scanner"
+        echo "  ./manage.sh logs         - View live logs"
+        echo "  ./manage.sh logs-file    - Check log files"
+        echo "  ./manage.sh logs-export  - Export logs to file"
+        echo "  ./manage.sh status       - Check status and resources"
         echo ""
         echo "Maintenance:"
         echo "  ./manage.sh update    - Update and rebuild"

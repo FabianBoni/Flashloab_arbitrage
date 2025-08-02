@@ -230,13 +230,13 @@ class ImmediateArbitrageScanner:
         self.gc_interval = 100  # Run garbage collection every 100 operations
         self.operation_count = 0
         
-        # Configuration - PRODUCTION PROFITABLE THRESHOLDS
-        # Only execute on profitable trades after all fees
-        self.min_profit_threshold = float(os.getenv('MIN_PROFIT_THRESHOLD', '0.008'))  # 0.8% minimum profit
-        self.immediate_execution_threshold = 0.012  # 1.2% for immediate execution
-        self.aggressive_execution_threshold = 0.025  # 2.5% for aggressive execution
-        self.gas_cost_bnb = 0.002  # Realistic gas cost for larger trades
-        self.total_fee_percentage = 0.004  # 0.4% total fees (optimized)
+        # Configuration - OPTIMIZED PROFITABLE THRESHOLDS
+        # Reduced thresholds to capture more opportunities
+        self.min_profit_threshold = float(os.getenv('MIN_PROFIT_THRESHOLD', '0.001'))  # 0.1% minimum profit (reduced)
+        self.immediate_execution_threshold = 0.003  # 0.3% for immediate execution (reduced)
+        self.aggressive_execution_threshold = 0.008  # 0.8% for aggressive execution (reduced)  
+        self.gas_cost_bnb = 0.0005  # Further reduced gas cost estimate
+        self.total_fee_percentage = 0.001  # 0.1% total fees (optimized)
         
         # Dynamic trade amounts based on opportunity size
         self.base_trade_amount = 0.1      # Base: 0.1 tokens ($0.10 - $6,100 depending on token)
