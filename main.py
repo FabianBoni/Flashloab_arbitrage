@@ -86,13 +86,13 @@ class BSCArbitrageSystem:
         self.min_profit_threshold = float(os.getenv('MIN_PROFIT_THRESHOLD', '0.5'))  # 0.5%
         self.max_gas_price = float(os.getenv('MAX_GAS_PRICE', '5'))  # Gwei
         self.scan_interval = int(os.getenv('SCAN_INTERVAL', '10'))  # seconds
-        self.enable_execution = os.getenv('ENABLE_EXECUTION', 'false').lower() == 'true'
+        self.enable_execution = os.getenv('ENABLE_EXECUTION', 'true').lower() == 'true'  # 🔴 PRODUCTION MODE ENABLED
         
         logger.info(f"📊 Configuration:")
         logger.info(f"   Min Profit: {self.min_profit_threshold}%")
         logger.info(f"   Max Gas: {self.max_gas_price} Gwei")
         logger.info(f"   Scan Interval: {self.scan_interval}s")
-        logger.info(f"   Execution: {'✅ ENABLED' if self.enable_execution else '❌ SIMULATION ONLY'}")
+        logger.info(f"   Execution: {'🔴 LIVE TRADING ENABLED' if self.enable_execution else '❌ SIMULATION ONLY'}")
         
     def _setup_web3(self) -> Web3:
         """Setup Web3 connection"""
@@ -142,13 +142,9 @@ class BSCArbitrageSystem:
             cex_dex_opps = await self.scanner.find_cex_dex_opportunities()
             opportunities.extend(cex_dex_opps)
             
-            # 2. Multi-DEX opportunities  
-            dex_opps = await self.scanner.find_dex_opportunities()
-            opportunities.extend(dex_opps)
-            
-            # 3. Triangular arbitrage on CEXes
-            triangular_opps = await self.scanner.find_triangular_opportunities()
-            opportunities.extend(triangular_opps)
+            # 2. CEX-CEX opportunities  
+            cex_cex_opps = await self.scanner.find_cex_cex_opportunities()
+            opportunities.extend(cex_cex_opps)
             
             # Filter by profitability
             profitable_opps = [
@@ -178,13 +174,22 @@ class BSCArbitrageSystem:
             logger.info(f"📊 SIMULATION: Would execute {opportunity.strategy} for {opportunity.profit_percentage:.3f}% profit")
             return True
         
+        # 🔴 PRODUCTION SAFETY CHECKS
+        if opportunity.profit_percentage < self.min_profit_threshold:
+            logger.warning(f"⚠️  Profit {opportunity.profit_percentage:.3f}% below threshold {self.min_profit_threshold}%")
+            return False
+            
+        if opportunity.estimated_profit_usdt < 1.0:  # Minimum $1 profit
+            logger.warning(f"⚠️  Estimated profit ${opportunity.estimated_profit_usdt:.2f} too low for production")
+            return False
+        
         if not self.account:
             logger.warning("⚠️  Cannot execute - no account configured")
             return False
         
         try:
-            logger.info(f"⚡ Executing {opportunity.strategy}: {opportunity.token_pair}")
-            logger.info(f"   Expected profit: {opportunity.profit_percentage:.3f}%")
+            logger.info(f"🔴 LIVE TRADE: Executing {opportunity.strategy}: {opportunity.token_pair}")
+            logger.info(f"   Expected profit: {opportunity.profit_percentage:.3f}% (~${opportunity.estimated_profit_usdt:.2f})")
             
             self.stats.trades_executed += 1
             
@@ -204,23 +209,31 @@ class BSCArbitrageSystem:
                 self.stats.total_profit_usdt += opportunity.estimated_profit_usdt
                 
                 # Send success notification
-                await telegram_bot.send_message(
-                    f"✅ Trade executed successfully!\n"
-                    f"Strategy: {opportunity.strategy}\n"
-                    f"Pair: {opportunity.token_pair}\n"
-                    f"Profit: {opportunity.profit_percentage:.3f}% (~${opportunity.estimated_profit_usdt:.2f})"
-                )
+                try:
+                    if hasattr(telegram_bot, 'send_message'):
+                        await telegram_bot.send_message(
+                            f"✅ Trade executed successfully!\n"
+                            f"Strategy: {opportunity.strategy}\n"
+                            f"Pair: {opportunity.token_pair}\n"
+                            f"Profit: {opportunity.profit_percentage:.3f}% (~${opportunity.estimated_profit_usdt:.2f})"
+                        )
+                except Exception as e:
+                    logger.warning(f"⚠️  Telegram notification failed: {e}")
             
             return success
             
         except Exception as e:
             logger.error(f"❌ Execution failed: {e}")
             
-            await telegram_bot.send_message(
-                f"❌ Trade execution failed\n"
-                f"Strategy: {opportunity.strategy}\n"
-                f"Error: {str(e)[:100]}..."
-            )
+            try:
+                if hasattr(telegram_bot, 'send_message'):
+                    await telegram_bot.send_message(
+                        f"❌ Trade execution failed\n"
+                        f"Strategy: {opportunity.strategy}\n"
+                        f"Error: {str(e)[:100]}..."
+                    )
+            except Exception as notify_error:
+                logger.warning(f"⚠️  Telegram notification failed: {notify_error}")
             return False
     
     async def _execute_cex_dex_flashloan(self, opportunity: UnifiedOpportunity) -> bool:
@@ -326,7 +339,11 @@ class BSCArbitrageSystem:
                 f"🏆 Best profit: {self.stats.best_profit_pct:.3f}%"
             )
             
-            await telegram_bot.send_message(stats_message)
+            try:
+                if hasattr(telegram_bot, 'send_message'):
+                    await telegram_bot.send_message(stats_message)
+            except Exception as e:
+                logger.warning(f"⚠️  Telegram stats notification failed: {e}")
             
         except Exception as e:
             logger.error(f"❌ Error sending stats: {e}")
@@ -336,12 +353,18 @@ class BSCArbitrageSystem:
         logger.info("🚀 Starting BSC Arbitrage System...")
         
         # Send startup notification
-        await telegram_bot.send_message(
-            f"🚀 BSC Arbitrage System Started\n"
-            f"Mode: {'🔴 LIVE TRADING' if self.enable_execution else '🟡 SIMULATION'}\n"
-            f"Min Profit: {self.min_profit_threshold}%\n"
-            f"Scan Interval: {self.scan_interval}s"
-        )
+        try:
+            if hasattr(telegram_bot, 'send_message'):
+                await telegram_bot.send_message(
+                    f"🚀 BSC Arbitrage System Started\n"
+                    f"Mode: {'🔴 LIVE TRADING' if self.enable_execution else '🟡 SIMULATION'}\n"
+                    f"Min Profit: {self.min_profit_threshold}%\n"
+                    f"Scan Interval: {self.scan_interval}s"
+                )
+            else:
+                logger.warning("⚠️  Telegram bot not available")
+        except Exception as e:
+            logger.warning(f"⚠️  Telegram notification failed: {e}")
         
         last_stats_time = time.time()
         
@@ -380,10 +403,18 @@ class BSCArbitrageSystem:
             logger.info("🛑 Shutdown requested")
         except Exception as e:
             logger.error(f"❌ Fatal error: {e}")
-            await telegram_bot.send_message(f"🚨 System error: {str(e)[:100]}...")
+            try:
+                if hasattr(telegram_bot, 'send_message'):
+                    await telegram_bot.send_message(f"🚨 System error: {str(e)[:100]}...")
+            except Exception as notify_error:
+                logger.warning(f"⚠️  Telegram error notification failed: {notify_error}")
         finally:
             # Send shutdown notification
-            await telegram_bot.send_message("🛑 BSC Arbitrage System Stopped")
+            try:
+                if hasattr(telegram_bot, 'send_message'):
+                    await telegram_bot.send_message("🛑 BSC Arbitrage System Stopped")
+            except Exception as notify_error:
+                logger.warning(f"⚠️  Telegram shutdown notification failed: {notify_error}")
             logger.info("👋 BSC Arbitrage System stopped")
 
 async def main():
